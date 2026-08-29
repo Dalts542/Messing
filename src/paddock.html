@@ -427,8 +427,8 @@ async function tryFetch(url,opts,label){
   try{
     var r=await fetch(url,Object.assign({signal:AbortSignal.timeout(15000)},opts||{}));
     console.log('Paddock ['+label+'] HTTP '+r.status+' '+r.statusText);
-    if(!r.ok)return null;
     var text=await r.text();
+    if(!r.ok){console.log('Paddock ['+label+'] error body: '+text.substring(0,500));return null}
     console.log('Paddock ['+label+'] response: '+text.substring(0,300));
     try{var j=JSON.parse(text);if(j.racecards)return j;if(j.contents){var c=JSON.parse(j.contents);if(c.racecards)return c}}catch(e){console.log('Paddock ['+label+'] parse error: '+e.message)}
     return null;
