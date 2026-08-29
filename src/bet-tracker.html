@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paddock Ledger</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --green: #1a3a2a;
+  --green-light: #2a5a3a;
+  --gold: #c9a227;
+  --gold-dim: #a88820;
+  --win: #27ae60;
+  --loss: #c0392b;
+  --void-c: #7f8c8d;
+  --text: #2d3436;
+  --text-secondary: #636e72;
+  --surface: #f5f0e8;
+  --surface-raised: #ffffff;
+  --surface-input: #ffffff;
+  --border: #d5cfc3;
+  --border-focus: #1a3a2a;
+  --sage: #7f9a8b;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --green: #1a3a2a;
+    --green-light: #2a5a3a;
+    --gold: #d4ad2e;
+    --gold-dim: #b8952a;
+    --win: #2ecc71;
+    --loss: #e74c3c;
+    --void-c: #95a5a6;
+    --text: #e8e2d6;
+    --text-secondary: #a09888;
+    --surface: #1a1d21;
+    --surface-raised: #252830;
+    --surface-input: #2a2d35;
+    --border: #3a3d45;
+    --border-focus: #c9a227;
+    --sage: #5a7a6b;
+  }
+}
+:root[data-theme="dark"]{
+  --green: #1a3a2a;
+  --green-light: #2a5a3a;
+  --gold: #d4ad2e;
+  --gold-dim: #b8952a;
+  --win: #2ecc71;
+  --loss: #e74c3c;
+  --void-c: #95a5a6;
+  --text: #e8e2d6;
+  --text-secondary: #a09888;
+  --surface: #1a1d21;
+  --surface-raised: #252830;
+  --surface-input: #2a2d35;
+  --border: #3a3d45;
+  --border-focus: #c9a227;
+  --sage: #5a7a6b;
+}
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font-body);
+  background:var(--surface);
+  color:var(--text);
+  line-height:1.5;
+  min-height:100vh;
+}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit}
+
+/* Header */
+.header{
+  background:var(--green);
+  color:#f5f0e8;
+  padding:1.25rem 1.5rem;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:1rem;
+}
+.header h1{
+  font-family:var(--font-display);
+  font-size:1.5rem;
+  letter-spacing:.02em;
+  display:flex;align-items:center;gap:.5rem;
+}
+.header h1 span{color:var(--gold)}
+
+/* Stats bar */
+.stats-bar{
+  display:flex;
+  gap:1.5rem;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.stat{text-align:center}
+.stat-value{
+  font-size:1.35rem;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  line-height:1.2;
+}
+.stat-label{
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  opacity:.7;
+}
+.stat-positive{color:#2ecc71}
+.stat-negative{color:#e74c3c}
+.stat-neutral{color:var(--gold)}
+
+/* Main layout */
+.main{
+  max-width:1200px;
+  margin:0 auto;
+  padding:1.5rem;
+  display:grid;
+  grid-template-columns:340px 1fr;
+  gap:1.5rem;
+  align-items:start;
+}
+@media(max-width:800px){
+  .main{grid-template-columns:1fr;padding:1rem}
+}
+
+/* Cards */
+.card{
+  background:var(--surface-raised);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+}
+.card-head{
+  padding:.85rem 1.1rem;
+  font-weight:600;
+  font-size:.85rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  color:var(--text-secondary);
+}
+
+/* Form */
+.form-body{padding:1.1rem;display:flex;flex-direction:column;gap:.85rem}
+.field label{
+  display:block;
+  font-size:.75rem;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--text-secondary);
+  margin-bottom:.3rem;
+}
+.field input,.field select{
+  width:100%;
+  padding:.55rem .7rem;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--surface-input);
+  color:var(--text);
+  font-size:.9rem;
+  transition:border-color .15s;
+}
+.field input:focus,.field select:focus{
+  outline:none;
+  border-color:var(--border-focus);
+}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.btn-add{
+  width:100%;
+  padding:.7rem;
+  background:var(--green);
+  color:#f5f0e8;
+  border:none;
+  border-radius:6px;
+  font-weight:600;
+  font-size:.9rem;
+  letter-spacing:.03em;
+  transition:background .15s;
+}
+.btn-add:hover{background:var(--green-light)}
+
+/* Filters row */
+.filters{
+  padding:.7rem 1.1rem;
+  display:flex;
+  gap:.6rem;
+  flex-wrap:wrap;
+  align-items:center;
+  border-bottom:1px solid var(--border);
+}
+.filters input,.filters select{
+  padding:.4rem .6rem;
+  border:1px solid var(--border);
+  border-radius:5px;
+  background:var(--surface-input);
+  color:var(--text);
+  font-size:.8rem;
+}
+.filters input:focus,.filters select:focus{outline:none;border-color:var(--border-focus)}
+.filter-label{font-size:.7rem;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.btn-small{
+  padding:.4rem .7rem;
+  border:1px solid var(--border);
+  border-radius:5px;
+  background:var(--surface-input);
+  color:var(--text-secondary);
+  font-size:.75rem;
+  font-weight:600;
+  transition:all .15s;
+}
+.btn-small:hover{border-color:var(--gold);color:var(--gold)}
+.btn-danger{color:var(--loss)}
+.btn-danger:hover{border-color:var(--loss);color:var(--loss)}
+
+/* Table */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+thead th{
+  padding:.65rem .7rem;
+  text-align:left;
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--text-secondary);
+  font-weight:600;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+tbody td{
+  padding:.6rem .7rem;
+  border-bottom:1px solid var(--border);
+  font-variant-numeric:tabular-nums;
+  vertical-align:middle;
+}
+tbody tr:last-child td{border-bottom:none}
+.horse-name{font-weight:600;color:var(--text)}
+.course-name{color:var(--text-secondary);font-size:.8rem}
+.odds{font-weight:600}
+.money{font-weight:600;font-variant-numeric:tabular-nums}
+.money-pos{color:var(--win)}
+.money-neg{color:var(--loss)}
+
+/* Result buttons */
+.result-btns{display:flex;gap:.3rem}
+.result-btn{
+  padding:.25rem .5rem;
+  border:1px solid var(--border);
+  border-radius:4px;
+  font-size:.7rem;
+  font-weight:600;
+  background:var(--surface-input);
+  color:var(--text-secondary);
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  transition:all .15s;
+}
+.result-btn:hover{transform:scale(1.05)}
+.result-btn[data-r="won"]:hover,.result-btn[data-r="won"].active{
+  background:var(--win);color:#fff;border-color:var(--win)
+}
+.result-btn[data-r="lost"]:hover,.result-btn[data-r="lost"].active{
+  background:var(--loss);color:#fff;border-color:var(--loss)
+}
+.result-btn[data-r="void"]:hover,.result-btn[data-r="void"].active{
+  background:var(--void-c);color:#fff;border-color:var(--void-c)
+}
+.badge{
+  display:inline-block;
+  padding:.15rem .45rem;
+  border-radius:4px;
+  font-size:.7rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+.badge-won{background:var(--win);color:#fff}
+.badge-lost{background:var(--loss);color:#fff}
+.badge-void{background:var(--void-c);color:#fff}
+.badge-pending{background:var(--border);color:var(--text-secondary)}
+
+.empty-state{
+  padding:3rem 1rem;
+  text-align:center;
+  color:var(--text-secondary);
+  font-size:.9rem;
+}
+.empty-state p:first-child{font-size:2rem;margin-bottom:.5rem}
+
+/* Delete btn in table */
+.btn-del{
+  background:none;border:none;color:var(--text-secondary);
+  font-size:.85rem;opacity:.4;transition:all .15s;padding:.2rem;
+}
+.btn-del:hover{opacity:1;color:var(--loss)}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  background:var(--green);color:#f5f0e8;
+  padding:.7rem 1.2rem;border-radius:8px;
+  font-size:.85rem;font-weight:500;
+  transform:translateY(100px);opacity:0;
+  transition:all .3s ease;z-index:100;
+  box-shadow:0 4px 20px rgba(0,0,0,.25);
+}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* Bottom bar */
+.bottom-bar{
+  max-width:1200px;margin:0 auto;
+  padding:0 1.5rem 1.5rem;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:.5rem;
+}
+.bottom-bar .note{font-size:.75rem;color:var(--text-secondary)}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1><span>&#127943;</span> Paddock <span>Ledger</span></h1>
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat">
+      <div class="stat-value" id="stat-bets">0</div>
+      <div class="stat-label">Bets</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value stat-neutral" id="stat-strike">0%</div>
+      <div class="stat-label">Strike Rate</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="stat-pl">£0.00</div>
+      <div class="stat-label">P&amp;L</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="stat-roi">0%</div>
+      <div class="stat-label">ROI</div>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Add Bet Form -->
+  <div class="card">
+    <div class="card-head">Place a Bet</div>
+    <div class="form-body" id="bet-form">
+      <div class="row-2">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input type="time" id="f-time">
+        </div>
+      </div>
+      <div class="field">
+        <label>Racecourse</label>
+        <input type="text" id="f-course" placeholder="e.g. Cheltenham" list="courses-list">
+        <datalist id="courses-list"></datalist>
+      </div>
+      <div class="field">
+        <label>Horse</label>
+        <input type="text" id="f-horse" placeholder="Horse name">
+      </div>
+      <div class="row-3">
+        <div class="field">
+          <label>Bet Type</label>
+          <select id="f-type">
+            <option value="Win">Win</option>
+            <option value="E/W">Each-Way</option>
+            <option value="Place">Place</option>
+            <option value="Forecast">Forecast</option>
+            <option value="Tricast">Tricast</option>
+            <option value="Accumulator">Acca</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Odds</label>
+          <input type="text" id="f-odds" placeholder="e.g. 5/1">
+        </div>
+        <div class="field">
+          <label>Stake (£)</label>
+          <input type="number" id="f-stake" placeholder="5.00" step="0.50" min="0">
+        </div>
+      </div>
+      <div class="field">
+        <label>Notes (optional)</label>
+        <input type="text" id="f-notes" placeholder="e.g. Tipster pick, good ground form">
+      </div>
+      <button class="btn-add" id="btn-add">Add Bet</button>
+    </div>
+  </div>
+
+  <!-- Bet Ledger -->
+  <div class="card">
+    <div class="card-head">
+      <span>Bet Ledger</span>
+      <span style="display:flex;gap:.4rem">
+        <button class="btn-small" id="btn-export" title="Export CSV">Export</button>
+        <button class="btn-small btn-danger" id="btn-clear" title="Clear all bets">Clear All</button>
+      </span>
+    </div>
+    <div class="filters">
+      <span class="filter-label">Filter:</span>
+      <input type="text" id="fil-search" placeholder="Horse or course...">
+      <select id="fil-result">
+        <option value="">All Results</option>
+        <option value="pending">Pending</option>
+        <option value="won">Won</option>
+        <option value="lost">Lost</option>
+        <option value="void">Void</option>
+      </select>
+      <select id="fil-type">
+        <option value="">All Types</option>
+        <option value="Win">Win</option>
+        <option value="E/W">Each-Way</option>
+        <option value="Place">Place</option>
+        <option value="Forecast">Forecast</option>
+        <option value="Tricast">Tricast</option>
+        <option value="Accumulator">Acca</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Horse</th>
+            <th>Course</th>
+            <th>Type</th>
+            <th>Odds</th>
+            <th>Stake</th>
+            <th>Result</th>
+            <th>P&amp;L</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ledger-body"></tbody>
+      </table>
+      <div class="empty-state" id="empty-state">
+        <p>&#127943;</p>
+        <p>No bets yet. Add your first bet to start tracking.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <div class="note">Data saved locally in your browser. No account needed.</div>
+  <div style="display:flex;gap:.4rem">
+    <button class="btn-small" id="btn-import">Import CSV</button>
+    <input type="file" id="file-import" accept=".csv" hidden>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  function $(id){return document.getElementById(id)}
+  function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+  var BETS_KEY='paddock_ledger_bets';
+  var bets=[];
+
+  // UK/IRE courses for autocomplete
+  var COURSES=['Aintree','Ascot','Ayr','Bangor','Bath','Beverley','Brighton','Carlisle',
+    'Cartmel','Catterick','Chelmsford','Cheltenham','Chepstow','Chester','Doncaster',
+    'Epsom','Exeter','Fakenham','Ffos Las','Fontwell','Goodwood','Hamilton','Haydock',
+    'Hereford','Hexham','Huntingdon','Kelso','Kempton','Leicester','Lingfield',
+    'Ludlow','Market Rasen','Musselburgh','Newbury','Newcastle','Newmarket',
+    'Newton Abbot','Nottingham','Perth','Plumpton','Pontefract','Redcar','Ripon',
+    'Salisbury','Sandown','Sedgefield','Southwell','Stratford','Taunton','Thirsk',
+    'Towcester','Uttoxeter','Warwick','Wetherby','Wincanton','Windsor',
+    'Wolverhampton','Worcester','York',
+    'Curragh','Dundalk','Fairyhouse','Galway','Killarney','Leopardstown',
+    'Limerick','Listowel','Navan','Punchestown','Tipperary','Tramore','Wexford'];
+
+  function init(){
+    var dl=$('courses-list');
+    if(dl){COURSES.forEach(function(c){var o=document.createElement('option');o.value=c;dl.appendChild(o)})}
+
+    loadBets();
+
+    $('f-date').value=new Date().toISOString().slice(0,10);
+
+    $('btn-add').addEventListener('click',addBet);
+    $('btn-export').addEventListener('click',exportCSV);
+    $('btn-clear').addEventListener('click',function(){
+      if(confirm('Delete all bets? This cannot be undone.')){bets=[];saveBets();render()}
+    });
+    $('btn-import').addEventListener('click',function(){$('file-import').click()});
+    $('file-import').addEventListener('change',importCSV);
+    $('fil-search').addEventListener('input',render);
+    $('fil-result').addEventListener('change',render);
+    $('fil-type').addEventListener('change',render);
+
+    // Enter key in form
+    var formInputs=document.querySelectorAll('#bet-form input');
+    formInputs.forEach(function(inp){
+      inp.addEventListener('keydown',function(e){if(e.key==='Enter')addBet()});
+    });
+
+    render();
+  }
+
+  function loadBets(){
+    var raw=lsGet(BETS_KEY);
+    if(raw){try{bets=JSON.parse(raw)}catch(e){bets=[]}}
+  }
+
+  function saveBets(){lsSet(BETS_KEY,JSON.stringify(bets))}
+
+  function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+  function parseOdds(str){
+    if(!str)return 0;
+    str=str.trim();
+    // Fractional: 5/1, 11/4
+    var frac=str.match(/^(\d+)\s*\/\s*(\d+)$/);
+    if(frac)return parseInt(frac[1])/parseInt(frac[2]);
+    // Decimal: 6.0
+    var dec=parseFloat(str);
+    if(!isNaN(dec)&&dec>1)return dec-1;
+    if(!isNaN(dec))return dec;
+    // Evens
+    if(str.toLowerCase()==='evens'||str.toLowerCase()==='evs')return 1;
+    return 0;
+  }
+
+  function formatOdds(str){return str.trim()||'-'}
+
+  function calcPL(bet){
+    if(bet.result==='void')return bet.stake;
+    if(bet.result==='lost')return -bet.stake;
+    if(bet.result==='won'){
+      var odds=parseOdds(bet.odds);
+      if(bet.betType==='E/W'){
+        // Each-way: half stake win at full odds + half stake place at 1/4 or 1/5
+        // Simplified: assume 1/4 odds place part, full win
+        var halfStake=bet.stake/2;
+        return (halfStake*odds)+(halfStake*(odds/4));
+      }
+      return bet.stake*odds;
+    }
+    return 0;
+  }
+
+  function addBet(){
+    var horse=$('f-horse').value.trim();
+    var course=$('f-course').value.trim();
+    var odds=$('f-odds').value.trim();
+    var stake=parseFloat($('f-stake').value);
+
+    if(!horse){toast('Enter a horse name');return}
+    if(!odds){toast('Enter the odds');return}
+    if(!stake||stake<=0){toast('Enter a valid stake');return}
+
+    var bet={
+      id:genId(),
+      date:$('f-date').value||new Date().toISOString().slice(0,10),
+      time:$('f-time').value||'',
+      course:course,
+      horse:horse,
+      betType:$('f-type').value,
+      odds:odds,
+      stake:stake,
+      notes:$('f-notes').value.trim(),
+      result:'pending',
+      created:Date.now()
+    };
+
+    bets.unshift(bet);
+    saveBets();
+    render();
+
+    // Reset form partially
+    $('f-horse').value='';
+    $('f-odds').value='';
+    $('f-notes').value='';
+    $('f-horse').focus();
+
+    toast('Bet added: '+horse);
+  }
+
+  function setResult(id,result){
+    for(var i=0;i<bets.length;i++){
+      if(bets[i].id===id){bets[i].result=result;break}
+    }
+    saveBets();
+    render();
+  }
+
+  function deleteBet(id){
+    bets=bets.filter(function(b){return b.id!==id});
+    saveBets();
+    render();
+  }
+
+  function getFiltered(){
+    var search=$('fil-search').value.toLowerCase();
+    var result=$('fil-result').value;
+    var type=$('fil-type').value;
+    return bets.filter(function(b){
+      if(search&&b.horse.toLowerCase().indexOf(search)===-1&&b.course.toLowerCase().indexOf(search)===-1)return false;
+      if(result&&b.result!==result)return false;
+      if(type&&b.betType!==type)return false;
+      return true;
+    });
+  }
+
+  function esc(s){
+    var d=document.createElement('div');
+    d.textContent=s;
+    return d.innerHTML;
+  }
+
+  function render(){
+    var filtered=getFiltered();
+    var tbody=$('ledger-body');
+    var empty=$('empty-state');
+
+    if(filtered.length===0){
+      tbody.innerHTML='';
+      empty.hidden=false;
+    } else {
+      empty.hidden=true;
+      var html='';
+      filtered.forEach(function(b){
+        var pl=calcPL(b);
+        var plStr=b.result==='pending'?'-':
+          (b.result==='void'?'£0.00':
+          (pl>=0?'<span class="money money-pos">+£'+pl.toFixed(2)+'</span>':
+                 '<span class="money money-neg">-£'+Math.abs(pl).toFixed(2)+'</span>'));
+
+        var resultCell='';
+        if(b.result==='pending'){
+          resultCell='<div class="result-btns">'+
+            '<button class="result-btn" data-r="won" data-id="'+b.id+'">Won</button>'+
+            '<button class="result-btn" data-r="lost" data-id="'+b.id+'">Lost</button>'+
+            '<button class="result-btn" data-r="void" data-id="'+b.id+'">Void</button>'+
+            '</div>';
+        } else {
+          resultCell='<span class="badge badge-'+b.result+'">'+b.result+'</span>';
+        }
+
+        var dateStr=b.date;
+        if(b.date){
+          var parts=b.date.split('-');
+          if(parts.length===3)dateStr=parts[2]+'/'+parts[1];
+        }
+        if(b.time)dateStr+=' '+b.time;
+
+        html+='<tr>'+
+          '<td>'+esc(dateStr)+'</td>'+
+          '<td><span class="horse-name">'+esc(b.horse)+'</span>'+(b.notes?' <span style="color:var(--text-secondary);font-size:.75rem" title="'+esc(b.notes)+'">&#128221;</span>':'')+'</td>'+
+          '<td class="course-name">'+esc(b.course||'-')+'</td>'+
+          '<td>'+esc(b.betType)+'</td>'+
+          '<td class="odds">'+esc(formatOdds(b.odds))+'</td>'+
+          '<td class="money">£'+b.stake.toFixed(2)+'</td>'+
+          '<td>'+resultCell+'</td>'+
+          '<td>'+plStr+'</td>'+
+          '<td><button class="btn-del" data-del="'+b.id+'" title="Delete">&#215;</button></td>'+
+          '</tr>';
+      });
+      tbody.innerHTML=html;
+
+      // Attach result button listeners
+      tbody.querySelectorAll('.result-btn').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          setResult(btn.getAttribute('data-id'),btn.getAttribute('data-r'));
+        });
+      });
+      // Attach delete listeners
+      tbody.querySelectorAll('.btn-del').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          if(confirm('Delete this bet?'))deleteBet(btn.getAttribute('data-del'));
+        });
+      });
+    }
+
+    updateStats();
+  }
+
+  function updateStats(){
+    var settled=bets.filter(function(b){return b.result==='won'||b.result==='lost'});
+    var wins=bets.filter(function(b){return b.result==='won'}).length;
+    var totalStaked=0;var totalPL=0;
+
+    bets.forEach(function(b){
+      if(b.result!=='void'&&b.result!=='pending'){
+        totalStaked+=b.stake;
+        totalPL+=calcPL(b);
+      }
+    });
+
+    $('stat-bets').textContent=bets.length;
+
+    var strike=settled.length>0?Math.round((wins/settled.length)*100):0;
+    var strikeEl=$('stat-strike');
+    strikeEl.textContent=strike+'%';
+    strikeEl.className='stat-value '+(strike>=30?'stat-positive':strike>0?'stat-neutral':'');
+
+    var plEl=$('stat-pl');
+    plEl.textContent=(totalPL>=0?'+':'-')+'£'+Math.abs(totalPL).toFixed(2);
+    plEl.className='stat-value '+(totalPL>0?'stat-positive':totalPL<0?'stat-negative':'');
+
+    var roi=totalStaked>0?Math.round((totalPL/totalStaked)*100):0;
+    var roiEl=$('stat-roi');
+    roiEl.textContent=(roi>=0?'+':'')+roi+'%';
+    roiEl.className='stat-value '+(roi>0?'stat-positive':roi<0?'stat-negative':'');
+  }
+
+  function exportCSV(){
+    if(bets.length===0){toast('No bets to export');return}
+    var rows=[['Date','Time','Course','Horse','Type','Odds','Stake','Result','P/L','Notes']];
+    bets.forEach(function(b){
+      var pl=calcPL(b);
+      rows.push([b.date,b.time,b.course,b.horse,b.betType,b.odds,b.stake.toFixed(2),b.result,pl.toFixed(2),b.notes]);
+    });
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+(c||'').toString().replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    var blob=new Blob([csv],{type:'text/csv'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='paddock-ledger-'+new Date().toISOString().slice(0,10)+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('CSV exported');
+  }
+
+  function importCSV(){
+    var file=$('file-import').files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var lines=e.target.result.split('\n');
+      var count=0;
+      for(var i=1;i<lines.length;i++){
+        var line=lines[i].trim();
+        if(!line)continue;
+        var cols=parseCSVLine(line);
+        if(cols.length<8)continue;
+        bets.push({
+          id:genId(),
+          date:cols[0]||'',
+          time:cols[1]||'',
+          course:cols[2]||'',
+          horse:cols[3]||'',
+          betType:cols[4]||'Win',
+          odds:cols[5]||'',
+          stake:parseFloat(cols[6])||0,
+          result:cols[7]||'pending',
+          notes:cols[9]||'',
+          created:Date.now()
+        });
+        count++;
+      }
+      saveBets();render();
+      toast('Imported '+count+' bets');
+    };
+    reader.readAsText(file);
+    $('file-import').value='';
+  }
+
+  function parseCSVLine(line){
+    var result=[];var current='';var inQuotes=false;
+    for(var i=0;i<line.length;i++){
+      var ch=line[i];
+      if(inQuotes){
+        if(ch==='"'&&line[i+1]==='"'){current+='"';i++}
+        else if(ch==='"'){inQuotes=false}
+        else{current+=ch}
+      } else {
+        if(ch==='"'){inQuotes=true}
+        else if(ch===','){result.push(current);current=''}
+        else{current+=ch}
+      }
+    }
+    result.push(current);
+    return result;
+  }
+
+  function toast(msg){
+    var t=$('toast');
+    t.textContent=msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer=setTimeout(function(){t.classList.remove('show')},2500);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
