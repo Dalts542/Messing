@@ -417,18 +417,20 @@ function saveSettings(){
 }
 
 // ─── Auto-fetch racecards via The Racing API ───
-var PROXY='https://api.allorigins.win/raw?url=';
+var PROXIES=[function(u){return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u)},function(u){return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)}];
 
 async function fetchRacingAPI(){
-  var base='https://api.theracingapi.com/v1/racecards?day=today';
-  try{
-    var res=await fetch(base,{headers:{'Authorization':'Basic '+btoa(cfg.racingUser+':'+cfg.racingPass)},signal:AbortSignal.timeout(15000)});
-    if(res.ok)return await res.json();
-  }catch(e){}
-  var proxyUrl=PROXY+encodeURIComponent('https://'+encodeURIComponent(cfg.racingUser)+':'+encodeURIComponent(cfg.racingPass)+'@api.theracingapi.com/v1/racecards?day=today');
-  var res2=await fetch(proxyUrl,{signal:AbortSignal.timeout(15000)});
-  if(!res2.ok)throw new Error('Racing API returned '+res2.status);
-  return await res2.json();
+  var apiUrl='https://api.theracingapi.com/v1/racecards?day=today';
+  var auth='Basic '+btoa(cfg.racingUser+':'+cfg.racingPass);
+  try{var r=await fetch(apiUrl,{headers:{'Authorization':auth},signal:AbortSignal.timeout(12000)});if(r.ok)return await r.json()}catch(e){}
+  var credUrl='https://'+encodeURIComponent(cfg.racingUser)+':'+encodeURIComponent(cfg.racingPass)+'@api.theracingapi.com/v1/racecards?day=today';
+  for(var i=0;i<PROXIES.length;i++){
+    try{var r2=await fetch(PROXIES[i](credUrl),{signal:AbortSignal.timeout(15000)});if(r2.ok){var d=await r2.json();if(d.racecards)return d}}catch(e){}
+  }
+  for(var j=0;j<PROXIES.length;j++){
+    try{var r3=await fetch(PROXIES[j](apiUrl),{headers:{'Authorization':auth},signal:AbortSignal.timeout(15000)});if(r3.ok){var d2=await r3.json();if(d2.racecards)return d2}}catch(e){}
+  }
+  throw new Error('All fetch methods failed — Racing API may be down or CORS proxies unavailable');
 }
 
 function renderRacecards(data){
