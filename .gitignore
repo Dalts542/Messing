@@ -9,5 +9,7 @@
 .claude-flow/daemon-state.json
 .claude-flow/harness-active-policy.json
 .claude-flow/metrics/codebase-map.json
+.claude-flow/metrics/performance.json
+.claude-flow/metrics/security-audit.json
 .claude-flow/policy/
 ruvector.db
