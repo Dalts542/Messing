@@ -21,4 +21,5 @@
 .claude-flow/metrics/backup.json
 .claude-flow/metrics/consolidation.json
 .claude-flow/metrics/test-gaps.json
+.claude-flow/metrics/harness-loop.json
 ruvector.db
