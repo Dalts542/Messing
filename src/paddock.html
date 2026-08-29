@@ -116,6 +116,12 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster)</option>
     <option value="claude-opus-4-20250514">Claude Opus 4 (deepest analysis)</option>
   </select>
+  <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:14px">
+    <label>RACING API <span style="color:var(--gold)">(LIVE RACECARDS)</span></label>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Free at <a href="https://www.theracingapi.com" target="_blank" style="color:var(--accent)">theracingapi.com</a></p>
+    <input type="text" id="setup-race-user" placeholder="Username">
+    <input type="password" id="setup-race-pass" placeholder="Password">
+  </div>
   <button class="btn-primary" id="btn-init">ENTER THE PADDOCK</button>
   <button class="btn-secondary" id="btn-skip">BROWSE WITHOUT AI</button>
 </div>
@@ -144,6 +150,11 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
     <option value="claude-opus-4-20250514">Claude Opus 4</option>
   </select>
+  <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:14px">
+    <label>RACING API</label>
+    <input type="text" id="set-race-user" placeholder="Username">
+    <input type="password" id="set-race-pass" placeholder="Password">
+  </div>
   <button class="btn-primary" id="btn-save-set">SAVE</button>
   <button class="btn-secondary" id="btn-close-set">CANCEL</button>
 </div>
@@ -180,7 +191,7 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
     <div class="sb-section">
       <div class="sb-title">RACECARD IMPORT</div>
       <button class="sb-btn" id="sb-import" style="background:var(--gold-dim);border-color:rgba(212,160,23,0.3);color:var(--gold)">&#9889; Auto Import Racecards</button>
-      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:4px 4px 0">Fetches today's cards from Racing Post, Sporting Life, or Timeform. Or paste any racecard into the chat.</p>
+      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:4px 4px 0">Fetches live racecards from The Racing API. Set credentials in Settings, or paste any racecard manually.</p>
     </div>
   </aside>
 
@@ -201,8 +212,11 @@ function listen(id,fn){var el=$(id);if(el)el.addEventListener('click',fn)}
 
 var cfg={
   apiKey:lsGet('paddock-key')||lsGet('nexus-api-key')||'',
-  model:lsGet('paddock-model')||'claude-sonnet-4-20250514'
+  model:lsGet('paddock-model')||'claude-sonnet-4-20250514',
+  racingUser:lsGet('paddock-race-user')||'',
+  racingPass:lsGet('paddock-race-pass')||''
 };
+var loadedRaces=[];
 var chatHistory=[];
 var cmdHistory=[];
 var cmdIdx=-1;
@@ -214,7 +228,7 @@ listen('btn-init',saveSetup);
 listen('btn-skip',skipSetup);
 listen('btn-save-set',saveSettings);
 listen('btn-close-set',function(){$('settings-modal').hidden=true});
-listen('btn-settings',function(){$('set-key').value=cfg.apiKey;$('set-model').value=cfg.model;$('settings-modal').hidden=false});
+listen('btn-settings',function(){$('set-key').value=cfg.apiKey;$('set-model').value=cfg.model;$('set-race-user').value=cfg.racingUser;$('set-race-pass').value=cfg.racingPass;$('settings-modal').hidden=false});
 listen('btn-send',sendMessage);
 listen('btn-import',function(){$('import-modal').hidden=false});
 listen('btn-close-import',function(){$('import-modal').hidden=true});
@@ -242,18 +256,12 @@ if(inputEl){
 }
 
 // ─── Init ───
-try{if(!cfg.apiKey)$('setup-modal').hidden=false}catch(e){}
+try{if(!cfg.apiKey&&!cfg.racingUser)$('setup-modal').hidden=false}catch(e){}
 try{bootSequence()}catch(e){}
+if(cfg.racingUser&&cfg.racingPass)setTimeout(autoFetchRaces,500);
 
 function bootSequence(){
-  addMsg('Welcome to Paddock Intelligence — your AI-powered racing analyst.\n\n'+
-    'I can help you with:\n'+
-    '• Analyze any race — type a meeting & time (e.g. "Cheltenham 2:30")\n'+
-    '• Rank horses 1-10 with form analysis and ratings\n'+
-    '• Provide tipster-grade picks with win, each-way, and value bets\n'+
-    '• Explain form figures, going, and key racing factors\n'+
-    '• Paste a full racecard and I\'ll break down every runner\n\n'+
-    'Use the sidebar for quick queries, or just ask me anything about racing.'+(cfg.apiKey?'':'\n\n⚠ No API key set — open Settings to connect Claude AI.'),'system');
+  addMsg('Welcome to Paddock Intelligence — your AI racing analyst.\n\n• Analyze any race (e.g. "Cheltenham 2:30")\n• Rank horses 1-10 with form ratings\n• WIN / EACH-WAY / VALUE BET verdicts\n• Paste a racecard for full breakdown\n\nUse the sidebar or ask anything about racing.'+(cfg.apiKey?'':'\n\n⚠ No API key — open Settings to connect Claude AI.'),'system');
 }
 
 // ─── Chat ───
@@ -290,27 +298,7 @@ function showTyping(){
 function hideTyping(){var t=$('typing-ind');if(t)t.remove()}
 function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
-var SYSTEM_PROMPT='You are Paddock Intelligence, an expert horse racing analyst with deep knowledge of UK and Irish flat racing, National Hunt, and all-weather racing. You combine form analysis, going preferences, trainer/jockey stats, class assessment, and track knowledge to provide professional-grade race analysis.\n\n'+
-'ANALYSIS FORMAT:\nWhen analyzing a specific race, structure your response clearly:\n\n'+
-'1. RACE OVERVIEW — course, distance, going, class, prize money if known\n'+
-'2. RUNNER RANKINGS — rank each horse 1 to 10 (or fewer). For each:\n'+
-'   • Name, recent form figures, jockey, trainer\n'+
-'   • Rating out of 10\n'+
-'   • Key analysis: form reading, going suitability, distance, class\n'+
-'3. VERDICT — your picks:\n'+
-'   WIN: [horse] — reasoning\n'+
-'   EACH-WAY: [horse] — reasoning\n'+
-'   VALUE BET: [horse at bigger price] — reasoning\n'+
-'4. DANGERS — horses that could outrun their price\n\n'+
-'TIPSTER ANALYSIS:\nWhen discussing tipsters, reference well-known UK racing tipsters: Tom Segal (Pricewise), Hugh Taylor, Templegate, Matt Chapman, Kevin Blake, Gary O\'Brien, Timeform analysts. Discuss their styles and track records honestly.\n\n'+
-'IMPORTANT:\n'+
-'- Be clear about whether analysis is from your training knowledge vs live data\n'+
-'- If you don\'t have specific runners for a race, say so and offer to analyze if the user provides them\n'+
-'- Give honest assessments — don\'t make every horse sound like a winner\n'+
-'- Include odds context where relevant\n'+
-'- When the user pastes a racecard, analyze EVERY runner\n'+
-'- Use form figure notation: 1=won, 2=second, 0=unplaced, P=pulled up, F=fell, U=unseated, R=refused, C=carried out, -=separator between seasons\n'+
-'- Rate confidence honestly: only rate horses 8+ when genuinely strong';
+var SYSTEM_PROMPT='You are Paddock Intelligence, an expert horse racing analyst covering UK/Irish flat, National Hunt, and all-weather racing. Combine form, going, trainer/jockey stats, class, and track knowledge for professional-grade analysis.\n\nFORMAT: 1) RACE OVERVIEW (course, distance, going, class) 2) RUNNER RANKINGS 1-10 with name, form, jockey, trainer, rating/10, key analysis 3) VERDICT: WIN, EACH-WAY, VALUE BET picks with reasoning 4) DANGERS.\n\nRULES: Be honest — don\'t oversell. Analyze EVERY runner when given a racecard. Use form notation (1=won, 2=2nd, 0=unplaced, P=PU, F=fell, U=unseated, R=refused, C=carried out, -=season break). Only rate 8+ when genuinely strong. State if analysis is from training knowledge vs live data. Reference tipsters like Pricewise, Templegate, Kevin Blake honestly.';
 
 function submitQuery(text){
   if(inputEl)inputEl.value='';
@@ -403,8 +391,16 @@ function saveSetup(){
   var model=$('setup-model').value;
   if(key){cfg.apiKey=key;lsSet('paddock-key',key)}
   cfg.model=model;lsSet('paddock-model',model);
+  var ru=$('setup-race-user').value.trim();
+  var rp=$('setup-race-pass').value.trim();
+  if(ru){cfg.racingUser=ru;lsSet('paddock-race-user',ru)}
+  if(rp){cfg.racingPass=rp;lsSet('paddock-race-pass',rp)}
   $('setup-modal').hidden=true;
-  addMsg(key?'Claude AI connected ('+model.split('-').slice(0,3).join(' ')+').\nReady to analyze. Ask me about any race, or use the sidebar to get started.':'Running without AI. Add a key in Settings whenever you\'re ready.','system');
+  var parts=[key?'Claude AI connected ('+model.split('-').slice(0,3).join(' ')+').':'Running without AI.'];
+  if(ru&&rp){parts.push('Racing API connected — live racecards enabled.')}
+  parts.push(key?'Ready to analyze. Ask me about any race, or use the sidebar.':'Add a key in Settings whenever you\'re ready.');
+  addMsg(parts.join('\n'),'system');
+  if(ru&&rp)autoFetchRaces();
 }
 function skipSetup(){$('setup-modal').hidden=true}
 function saveSettings(){
@@ -412,44 +408,84 @@ function saveSettings(){
   var model=$('set-model').value;
   if(key){cfg.apiKey=key;lsSet('paddock-key',key)}
   cfg.model=model;lsSet('paddock-model',model);
+  var ru=$('set-race-user').value.trim();
+  var rp=$('set-race-pass').value.trim();
+  if(ru){cfg.racingUser=ru;lsSet('paddock-race-user',ru)}
+  if(rp){cfg.racingPass=rp;lsSet('paddock-race-pass',rp)}
   $('settings-modal').hidden=true;
-  addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.','system');
+  addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.'+(ru&&rp?' Racing API connected.':''),'system');
 }
 
-// ─── Auto-fetch racecards ───
-var RACE_SOURCES=[
-  {url:'https://www.racingpost.com/racecards',name:'Racing Post'},
-  {url:'https://www.sportinglife.com/racing/racecards',name:'Sporting Life'},
-  {url:'https://www.timeform.com/horse-racing/racecards/today',name:'Timeform'}
-];
+// ─── Auto-fetch racecards via The Racing API ───
 var PROXY='https://api.allorigins.win/raw?url=';
+
+async function fetchRacingAPI(){
+  var base='https://api.theracingapi.com/v1/racecards?day=today';
+  try{
+    var res=await fetch(base,{headers:{'Authorization':'Basic '+btoa(cfg.racingUser+':'+cfg.racingPass)},signal:AbortSignal.timeout(15000)});
+    if(res.ok)return await res.json();
+  }catch(e){}
+  var proxyUrl=PROXY+encodeURIComponent('https://'+encodeURIComponent(cfg.racingUser)+':'+encodeURIComponent(cfg.racingPass)+'@api.theracingapi.com/v1/racecards?day=today');
+  var res2=await fetch(proxyUrl,{signal:AbortSignal.timeout(15000)});
+  if(!res2.ok)throw new Error('Racing API returned '+res2.status);
+  return await res2.json();
+}
+
+function renderRacecards(data){
+  var races=data.racecards||[];
+  if(!races.length)return addMsg('No racecards found for today.','system');
+  loadedRaces=races;var meetings={};
+  races.forEach(function(r){var c=r.course||'Unknown';if(!meetings[c])meetings[c]=[];meetings[c].push(r)});
+  var sb=$('sidebar'),oldMtg=sb?sb.querySelector('.sb-meetings'):null;
+  if(oldMtg)oldMtg.remove();
+  var frag=document.createElement('div');frag.className='sb-meetings';
+  frag.innerHTML='<hr class="sb-divider"><div class="sb-title">TODAY\'S MEETINGS</div>';
+  Object.keys(meetings).sort().forEach(function(course){
+    var sec=document.createElement('div');sec.className='sb-section';
+    sec.innerHTML='<div class="sb-meeting">'+escapeHtml(course)+'</div>';
+    meetings[course].sort(function(a,b){return(a.off_time||'').localeCompare(b.off_time||'')}).forEach(function(race){
+      var b=document.createElement('button');b.className='sb-btn sb-race';
+      b.textContent=(race.off_time||'??:??')+' '+(race.race_name||'').substring(0,30);
+      b.addEventListener('click',function(){analyzeRace(race)});sec.appendChild(b);
+    });frag.appendChild(sec);
+  });
+  if(sb)sb.appendChild(frag);
+  var keys=Object.keys(meetings).sort();
+  addMsg('Loaded '+races.length+' races across '+keys.length+' meetings:\n'+keys.join(', ')+'\n\nSelect any race from the sidebar to analyze.','system');
+}
+
+function analyzeRace(race){
+  var runners=(race.runners||[]).map(function(r,i){
+    var p=[(i+1)+'. '+(r.horse||r.name||'?')];
+    if(r.jockey)p.push('J: '+r.jockey);if(r.trainer)p.push('T: '+r.trainer);
+    if(r.form)p.push('Form: '+r.form);if(r.age)p.push('Age: '+r.age);
+    if(r.weight||r.lbs)p.push('Wt: '+(r.weight||r.lbs));
+    if(r.draw)p.push('Draw: '+r.draw);if(r.official_rating||r.or)p.push('OR: '+(r.official_rating||r.or));
+    return p.join(' | ');
+  }).join('\n');
+  var h=(race.off_time||'')+' '+(race.course||'')+' — '+(race.race_name||'');
+  if(race.distance)h+=' ('+race.distance+')';
+  if(race.race_class)h+=' Class '+race.race_class;
+  if(race.going)h+=' | Going: '+race.going;
+  submitQuery('RACECARD — Analyze this race, rank every runner 1-10, give WIN / EACH-WAY / VALUE BET verdicts:\n\n'+h+'\n\n'+runners);
+}
 
 async function autoFetchRaces(){
   var btn=$('btn-auto-fetch');
-  if(btn)btn.textContent='FETCHING...';
-  var fetched=false;
-  for(var i=0;i<RACE_SOURCES.length;i++){
-    try{
-      var res=await fetch(PROXY+encodeURIComponent(RACE_SOURCES[i].url),{signal:AbortSignal.timeout(12000)});
-      if(!res.ok)continue;
-      var html=await res.text();
-      var doc=new DOMParser().parseFromString(html,'text/html');
-      // Strip scripts, styles, nav, footer — keep main content text
-      doc.querySelectorAll('script,style,nav,footer,header,noscript,iframe,svg').forEach(function(el){el.remove()});
-      var text=(doc.body?doc.body.textContent:'').replace(/\s{3,}/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
-      if(text.length>200){
-        // Trim to ~8000 chars for Claude context
-        if(text.length>8000)text=text.substring(0,8000);
-        $('import-text').value=text;
-        if(btn)btn.textContent='FETCHED FROM '+RACE_SOURCES[i].name.toUpperCase();
-        addMsg('Fetched racecard data from '+RACE_SOURCES[i].name+'. Click "Parse & Analyze" to import, or edit the text first.','system');
-        fetched=true;break;
-      }
-    }catch(e){}
+  if(!cfg.racingUser||!cfg.racingPass){
+    addMsg('Racing API credentials not set. Enter your username and password in Settings (free at theracingapi.com).','system');
+    if(btn)btn.textContent='NO CREDENTIALS — SET IN SETTINGS';
+    return;
   }
-  if(!fetched){
+  if(btn)btn.textContent='FETCHING LIVE RACECARDS...';
+  try{
+    var data=await fetchRacingAPI();
+    if(btn)btn.textContent='LOADED — SELECT FROM SIDEBAR';
+    $('import-modal').hidden=true;
+    renderRacecards(data);
+  }catch(e){
     if(btn)btn.textContent='FETCH FAILED — PASTE BELOW';
-    addMsg('Auto-fetch unavailable (sites may block proxied requests). Paste a racecard from Racing Post or Sporting Life into the import box instead.','system');
+    addMsg('Racing API error: '+e.message+'. Check credentials in Settings or paste a racecard manually.','system');
   }
 }
 
