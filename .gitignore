@@ -14,4 +14,11 @@
 .claude-flow/policy/
 .claude-flow/swarm/
 .swarm/state.json
+.swarm/memory.db
+.swarm/memory.db-shm
+.swarm/memory.db-wal
+.swarm/backups/
+.claude-flow/metrics/backup.json
+.claude-flow/metrics/consolidation.json
+.claude-flow/metrics/test-gaps.json
 ruvector.db
