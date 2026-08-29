@@ -217,7 +217,7 @@ var cfg={
   model:lsGet('paddock-model')||'claude-sonnet-4-20250514',
   racingUser:lsGet('paddock-race-user')||'',
   racingPass:lsGet('paddock-race-pass')||'',
-  proxyUrl:lsGet('paddock-proxy')||'https://dawn-darkness-a25e.ollie-dalton.workers.dev'
+  proxyUrl:lsGet('paddock-proxy')||'https://racingv2.ollie-dalton.workers.dev'
 };
 var loadedRaces=[];
 var chatHistory=[];
@@ -259,6 +259,7 @@ if(inputEl){
 }
 
 // ─── Init ───
+if((lsGet('paddock-proxy')||'').indexOf('dawn-darkness')!==-1){lsSet('paddock-proxy','');cfg.proxyUrl='https://racingv2.ollie-dalton.workers.dev'}
 try{if(!cfg.apiKey&&!cfg.racingUser)$('setup-modal').hidden=false}catch(e){}
 try{bootSequence()}catch(e){}
 if(cfg.racingUser&&cfg.racingPass)setTimeout(autoFetchRaces,500);
@@ -425,10 +426,12 @@ function saveSettings(){
 async function tryFetch(url,opts,label){
   try{
     var r=await fetch(url,Object.assign({signal:AbortSignal.timeout(15000)},opts||{}));
-    if(!r.ok){console.log('Paddock ['+label+'] HTTP '+r.status);return null}
+    console.log('Paddock ['+label+'] HTTP '+r.status+' '+r.statusText);
+    if(!r.ok)return null;
     var text=await r.text();
-    try{var j=JSON.parse(text);if(j.racecards)return j;if(j.contents){var c=JSON.parse(j.contents);if(c.racecards)return c}}catch(e){}
-    console.log('Paddock ['+label+'] no racecards in response');return null;
+    console.log('Paddock ['+label+'] response: '+text.substring(0,300));
+    try{var j=JSON.parse(text);if(j.racecards)return j;if(j.contents){var c=JSON.parse(j.contents);if(c.racecards)return c}}catch(e){console.log('Paddock ['+label+'] parse error: '+e.message)}
+    return null;
   }catch(e){console.log('Paddock ['+label+'] '+e.message);return null}
 }
 async function fetchRacingAPI(){
