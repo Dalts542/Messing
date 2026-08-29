@@ -154,6 +154,8 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
     <label>RACING API</label>
     <input type="text" id="set-race-user" placeholder="Username">
     <input type="password" id="set-race-pass" placeholder="Password">
+    <label>PROXY URL <span style="color:var(--text-dim)">(Cloudflare Worker)</span></label>
+    <input type="text" id="set-proxy" placeholder="https://your-worker.workers.dev">
   </div>
   <button class="btn-primary" id="btn-save-set">SAVE</button>
   <button class="btn-secondary" id="btn-close-set">CANCEL</button>
@@ -214,7 +216,8 @@ var cfg={
   apiKey:lsGet('paddock-key')||lsGet('nexus-api-key')||'',
   model:lsGet('paddock-model')||'claude-sonnet-4-20250514',
   racingUser:lsGet('paddock-race-user')||'',
-  racingPass:lsGet('paddock-race-pass')||''
+  racingPass:lsGet('paddock-race-pass')||'',
+  proxyUrl:lsGet('paddock-proxy')||''
 };
 var loadedRaces=[];
 var chatHistory=[];
@@ -228,7 +231,7 @@ listen('btn-init',saveSetup);
 listen('btn-skip',skipSetup);
 listen('btn-save-set',saveSettings);
 listen('btn-close-set',function(){$('settings-modal').hidden=true});
-listen('btn-settings',function(){$('set-key').value=cfg.apiKey;$('set-model').value=cfg.model;$('set-race-user').value=cfg.racingUser;$('set-race-pass').value=cfg.racingPass;$('settings-modal').hidden=false});
+listen('btn-settings',function(){$('set-key').value=cfg.apiKey;$('set-model').value=cfg.model;$('set-race-user').value=cfg.racingUser;$('set-race-pass').value=cfg.racingPass;$('set-proxy').value=cfg.proxyUrl;$('settings-modal').hidden=false});
 listen('btn-send',sendMessage);
 listen('btn-import',function(){$('import-modal').hidden=false});
 listen('btn-close-import',function(){$('import-modal').hidden=true});
@@ -412,8 +415,10 @@ function saveSettings(){
   var rp=$('set-race-pass').value.trim();
   if(ru){cfg.racingUser=ru;lsSet('paddock-race-user',ru)}
   if(rp){cfg.racingPass=rp;lsSet('paddock-race-pass',rp)}
+  var px=$('set-proxy').value.trim().replace(/\/$/,'');
+  if(px){cfg.proxyUrl=px;lsSet('paddock-proxy',px)}
   $('settings-modal').hidden=true;
-  addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.'+(ru&&rp?' Racing API connected.':''),'system');
+  addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.'+(ru&&rp?' Racing API connected.':'')+(px?' Proxy: '+px:''),'system');
 }
 
 // ─── Auto-fetch racecards via The Racing API ───
@@ -429,15 +434,13 @@ async function tryFetch(url,opts,label){
 async function fetchRacingAPI(){
   var api='https://api.theracingapi.com/v1/racecards?day=today';
   var auth='Basic '+btoa(cfg.racingUser+':'+cfg.racingPass);
-  var cu='https://'+encodeURIComponent(cfg.racingUser)+':'+encodeURIComponent(cfg.racingPass)+'@api.theracingapi.com/v1/racecards?day=today';
-  var enc=encodeURIComponent(cu),tries=[
-    [api,{headers:{'Authorization':auth}},'direct'],
-    ['https://api.allorigins.win/raw?url='+enc,null,'allorigins-raw'],
-    ['https://api.allorigins.win/get?url='+enc,null,'allorigins-get'],
-    ['https://thingproxy.freeboard.io/fetch/'+cu,null,'thingproxy'],
-    ['https://api.codetabs.com/v1/proxy?quest='+enc,null,'codetabs']];
+  var tries=[];
+  if(cfg.proxyUrl)tries.push([cfg.proxyUrl+'?url='+encodeURIComponent(api),{headers:{'Authorization':auth}},'custom-proxy']);
+  tries.push([api,{headers:{'Authorization':auth}},'direct']);
+  var cu='https://'+encodeURIComponent(cfg.racingUser)+':'+encodeURIComponent(cfg.racingPass)+'@api.theracingapi.com/v1/racecards?day=today',enc=encodeURIComponent(cu);
+  tries.push(['https://api.allorigins.win/raw?url='+enc,null,'allorigins'],['https://api.codetabs.com/v1/proxy?quest='+enc,null,'codetabs']);
   for(var i=0;i<tries.length;i++){var d=await tryFetch(tries[i][0],tries[i][1],tries[i][2]);if(d)return d}
-  throw new Error('All fetch methods failed. Open browser console (F12) for details.');
+  throw new Error('All fetch methods failed. Set up a Proxy URL in Settings — see racing-proxy-worker.js');
 }
 
 function renderRacecards(data){
