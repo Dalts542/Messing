@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
 :root{
   --bg:#080c14;--surface:rgba(15,23,42,0.85);--surface-raised:#1a2236;
   --border:rgba(56,189,248,0.12);--border-bright:rgba(6,182,212,0.3);
@@ -124,8 +125,8 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;gr
     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster, cheaper)</option>
     <option value="claude-opus-4-20250514">Claude Opus 4 (most capable)</option>
   </select>
-  <button onclick="saveSetup()">INITIALISE NEXUS</button>
-  <button class="skip" onclick="skipSetup()">CONTINUE WITHOUT AI</button>
+  <button id="btn-save-setup">INITIALISE NEXUS</button>
+  <button class="skip" id="btn-skip-setup">CONTINUE WITHOUT AI</button>
   <div class="error" id="setup-error"></div>
 </div>
 </div>
@@ -142,8 +143,8 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;gr
     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
     <option value="claude-opus-4-20250514">Claude Opus 4</option>
   </select>
-  <button onclick="saveSettings()">SAVE</button>
-  <button class="skip" onclick="closeSettings()">CANCEL</button>
+  <button id="btn-save-settings">SAVE</button>
+  <button class="skip" id="btn-close-settings">CANCEL</button>
   <div class="error" id="settings-error"></div>
 </div>
 </div>
@@ -152,8 +153,8 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;gr
   <div class="logo"><div class="logo-dot"></div>NEXUS COMMAND</div>
   <div class="clock" id="clock"></div>
   <div class="header-controls">
-    <button id="btn-voice" title="Toggle voice output" onclick="toggleVoice()">VOICE OFF</button>
-    <button id="btn-settings" title="Settings" onclick="openSettings()">SETTINGS</button>
+    <button id="btn-voice" title="Toggle voice output">VOICE OFF</button>
+    <button id="btn-settings" title="Settings">SETTINGS</button>
   </div>
 </header>
 
@@ -189,18 +190,20 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;gr
     <div id="ai-messages"></div>
     <div class="ai-input-row">
       <input type="text" id="ai-input" placeholder="Ask NEXUS anything..." autocomplete="off">
-      <button class="ai-btn" id="btn-mic" title="Voice input" onclick="toggleMic()">&#x1F399;</button>
-      <button class="ai-btn" id="btn-send" onclick="sendMessage()">&#x27A4;</button>
+      <button class="ai-btn" id="btn-mic" title="Voice input">&#x1F399;</button>
+      <button class="ai-btn" id="btn-send">&#x27A4;</button>
     </div>
   </div>
 </main>
 
 <script>
 // ─── State ───
+function lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k, v) { try { lsSet(k, v); } catch(e) {} }
 var cfg = {
-  apiKey: localStorage.getItem('nexus-key') || '',
-  model: localStorage.getItem('nexus-model') || 'claude-sonnet-4-20250514',
-  voice: localStorage.getItem('nexus-voice') === 'true'
+  apiKey: lsGet('nexus-key') || '',
+  model: lsGet('nexus-model') || 'claude-sonnet-4-20250514',
+  voice: lsGet('nexus-voice') === 'true'
 };
 var startTime = Date.now();
 var chatHistory = [];
@@ -562,7 +565,7 @@ function speak(text) {
 
 function toggleVoice() {
   cfg.voice = !cfg.voice;
-  localStorage.setItem('nexus-voice', cfg.voice);
+  lsSet('nexus-voice', cfg.voice);
   updateVoiceBtn();
   if (!cfg.voice) speechSynthesis.cancel();
 }
@@ -580,8 +583,8 @@ function saveSetup() {
   if (key && !key.startsWith('sk-')) {
     document.getElementById('setup-error').textContent = 'Key should start with sk-'; document.getElementById('setup-error').style.display = 'block'; return;
   }
-  if (key) { cfg.apiKey = key; localStorage.setItem('nexus-key', key); }
-  cfg.model = model; localStorage.setItem('nexus-model', model);
+  if (key) { cfg.apiKey = key; lsSet('nexus-key', key); }
+  cfg.model = model; lsSet('nexus-model', model);
   document.getElementById('setup-modal').hidden = true;
   addMsg(key ? 'Claude AI connected. Model: ' + model.split('-').slice(0,3).join(' ') + '. All systems are at your disposal.' : 'Running in offline mode. You can add an API key later via Settings.', 'system');
   if (cfg.voice) speak('NEXUS is online. All systems operational.');
@@ -606,8 +609,8 @@ function saveSettings() {
   if (key && !key.startsWith('sk-')) {
     document.getElementById('settings-error').textContent = 'Key should start with sk-'; document.getElementById('settings-error').style.display = 'block'; return;
   }
-  if (key) { cfg.apiKey = key; localStorage.setItem('nexus-key', key); }
-  cfg.model = model; localStorage.setItem('nexus-model', model);
+  if (key) { cfg.apiKey = key; lsSet('nexus-key', key); }
+  cfg.model = model; lsSet('nexus-model', model);
   document.getElementById('settings-modal').hidden = true;
   addMsg('Settings updated. Model: ' + model.split('-').slice(0,3).join(' ') + '.', 'system');
 }
@@ -654,7 +657,15 @@ function bootSequence() {
   }, totalDelay);
 }
 
-// Focus input
+// ─── Event Listeners (no inline onclick — works in all security contexts) ───
+document.getElementById('btn-save-setup').addEventListener('click', saveSetup);
+document.getElementById('btn-skip-setup').addEventListener('click', skipSetup);
+document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
+document.getElementById('btn-voice').addEventListener('click', toggleVoice);
+document.getElementById('btn-settings').addEventListener('click', openSettings);
+document.getElementById('btn-mic').addEventListener('click', toggleMic);
+document.getElementById('btn-send').addEventListener('click', sendMessage);
 inputEl.focus();
 document.addEventListener('keydown', function(e) {
   if (e.key === '/' && document.activeElement !== inputEl) { e.preventDefault(); inputEl.focus(); }
