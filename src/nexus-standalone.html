@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS Command</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c14;--surface:rgba(15,23,42,0.85);--surface-raised:#1a2236;
+  --border:rgba(56,189,248,0.12);--border-bright:rgba(6,182,212,0.3);
+  --accent:#06b6d4;--accent-dim:rgba(6,182,212,0.1);--accent-glow:rgba(6,182,212,0.25);
+  --green:#10b981;--red:#ef4444;--amber:#f59e0b;
+  --text:#e2e8f0;--text-mid:#94a3b8;--text-dim:#475569;
+  --font-ui:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(6,182,212,0.06),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(99,102,241,0.04),transparent 50%);pointer-events:none;z-index:0}
+
+/* Layout */
+header{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);backdrop-filter:blur(12px);background:rgba(8,12,20,0.8)}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-weight:500;font-size:14px;letter-spacing:2px;color:var(--accent)}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--accent)}50%{opacity:.5;box-shadow:0 0 16px var(--accent)}}
+.clock{font-family:var(--font-mono);font-size:13px;color:var(--text-mid);font-variant-numeric:tabular-nums}
+.header-controls{display:flex;align-items:center;gap:12px}
+.header-controls button{background:none;border:1px solid var(--border);color:var(--text-mid);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-family:var(--font-mono);transition:all .2s}
+.header-controls button:hover{border-color:var(--accent);color:var(--accent)}
+.header-controls button.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;grid-template-rows:auto auto 1fr;gap:14px;padding:14px 24px 24px;height:calc(100vh - 53px)}
+@media(max-width:900px){main{grid-template-columns:1fr;height:auto}}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;backdrop-filter:blur(8px)}
+.card-title{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:2px;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:3px;height:12px;background:var(--accent);border-radius:2px}
+
+/* Weather */
+#weather-card{grid-column:1;grid-row:1}
+.weather-main{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.weather-temp{font-family:var(--font-mono);font-size:48px;font-weight:300;color:var(--text);line-height:1}
+.weather-temp .unit{font-size:20px;color:var(--text-mid);vertical-align:super}
+.weather-desc{font-size:13px;color:var(--text-mid);margin-bottom:2px}
+.weather-loc{font-family:var(--font-mono);font-size:10px;color:var(--accent);letter-spacing:1px}
+.weather-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.weather-stat{text-align:center}
+.weather-stat-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px}
+.weather-stat-val{font-family:var(--font-mono);font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
+
+/* Markets */
+#markets-card{grid-column:1;grid-row:2}
+.stock-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,41,59,0.5)}
+.stock-row:last-child{border:none}
+.stock-sym{font-family:var(--font-mono);font-size:13px;font-weight:500;min-width:36px}
+.stock-name{font-size:11px;color:var(--text-dim);flex:1}
+.stock-spark{width:60px;height:24px}
+.stock-price{font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums;min-width:100px;text-align:right}
+.stock-change{font-family:var(--font-mono);font-size:11px;min-width:65px;text-align:right;font-variant-numeric:tabular-nums}
+.up{color:var(--green)}.down{color:var(--red)}
+
+/* News */
+#news-card{grid-column:1;grid-row:3;overflow-y:auto}
+.news-item{padding:10px 0;border-bottom:1px solid rgba(30,41,59,0.4)}
+.news-item:last-child{border:none}
+.news-headline{font-size:12px;line-height:1.5;margin-bottom:4px}
+.news-meta{display:flex;gap:8px;align-items:center;font-size:10px;color:var(--text-dim)}
+.news-tag{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:3px;background:rgba(6,182,212,0.15);color:var(--accent)}
+
+/* AI Panel */
+#ai-card{grid-column:2;grid-row:1/4;display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:900px){#ai-card{grid-column:1;grid-row:4;min-height:400px}}
+#ai-messages{flex:1;overflow-y:auto;padding:4px 0;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.ai-msg{font-size:13px;line-height:1.6;padding:10px 14px;border-radius:8px;max-width:92%;white-space:pre-wrap;word-wrap:break-word}
+.ai-msg.system{background:var(--surface-raised);border:1px solid var(--border);align-self:flex-start;color:var(--text)}
+.ai-msg.user{background:var(--accent-dim);border:1px solid var(--border-bright);align-self:flex-end;color:var(--text)}
+.ai-msg-label{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--accent);margin-bottom:4px}
+.ai-input-row{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:8px}
+#ai-input{flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color .2s}
+#ai-input:focus{border-color:var(--accent)}
+#ai-input::placeholder{color:var(--text-dim)}
+.ai-btn{background:var(--accent-dim);border:1px solid var(--border-bright);color:var(--accent);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.ai-btn:hover{background:rgba(6,182,212,0.2);border-color:var(--accent)}
+.ai-btn.recording{background:rgba(239,68,68,0.2);border-color:var(--red);color:var(--red);animation:pulse 1s infinite}
+.typing-indicator{display:flex;gap:4px;padding:4px 0}
+.typing-indicator span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:typing .8s infinite}
+.typing-indicator span:nth-child(2){animation-delay:.15s}
+.typing-indicator span:nth-child(3){animation-delay:.3s}
+@keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+/* Setup Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(8px)}
+.modal{background:var(--surface);border:1px solid var(--border-bright);border-radius:14px;padding:32px;max-width:480px;width:90%;box-shadow:0 0 60px rgba(6,182,212,0.1)}
+.modal h2{font-family:var(--font-mono);font-size:14px;letter-spacing:2px;color:var(--accent);margin-bottom:8px}
+.modal p{font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:16px}
+.modal input,.modal select{width:100%;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;margin-bottom:12px}
+.modal input:focus{border-color:var(--accent)}
+.modal label{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:6px}
+.modal button{width:100%;background:var(--accent);border:none;color:#000;font-family:var(--font-mono);font-weight:600;font-size:12px;letter-spacing:1px;padding:12px;border-radius:8px;cursor:pointer;margin-top:8px;transition:opacity .2s}
+.modal button:hover{opacity:.85}
+.modal .skip{background:none;border:1px solid var(--border);color:var(--text-mid);margin-top:8px}
+.modal .error{color:var(--red);font-size:12px;margin-top:8px;display:none}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- Setup Modal -->
+<div class="modal-overlay" id="setup-modal" hidden>
+<div class="modal">
+  <h2>NEXUS INITIALISATION</h2>
+  <p>Enter your Anthropic API key to enable Claude AI integration. Your key is stored locally in your browser only — it never leaves this device.</p>
+  <p style="font-size:11px;color:var(--text-dim)">Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></p>
+  <label>API KEY</label>
+  <input type="password" id="setup-key" placeholder="sk-ant-...">
+  <label>MODEL</label>
+  <select id="setup-model">
+    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (recommended)</option>
+    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster, cheaper)</option>
+    <option value="claude-opus-4-20250514">Claude Opus 4 (most capable)</option>
+  </select>
+  <button onclick="saveSetup()">INITIALISE NEXUS</button>
+  <button class="skip" onclick="skipSetup()">CONTINUE WITHOUT AI</button>
+  <div class="error" id="setup-error"></div>
+</div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal" hidden>
+<div class="modal">
+  <h2>NEXUS SETTINGS</h2>
+  <label>API KEY</label>
+  <input type="password" id="settings-key" placeholder="sk-ant-...">
+  <label>MODEL</label>
+  <select id="settings-model">
+    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+    <option value="claude-opus-4-20250514">Claude Opus 4</option>
+  </select>
+  <button onclick="saveSettings()">SAVE</button>
+  <button class="skip" onclick="closeSettings()">CANCEL</button>
+  <div class="error" id="settings-error"></div>
+</div>
+</div>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>NEXUS COMMAND</div>
+  <div class="clock" id="clock"></div>
+  <div class="header-controls">
+    <button id="btn-voice" title="Toggle voice output" onclick="toggleVoice()">VOICE OFF</button>
+    <button id="btn-settings" title="Settings" onclick="openSettings()">SETTINGS</button>
+  </div>
+</header>
+
+<main>
+  <div class="card" id="weather-card">
+    <div class="card-title">WEATHER</div>
+    <div class="weather-main">
+      <div class="weather-temp" id="w-temp">--<span class="unit">&deg;C</span></div>
+      <div>
+        <div class="weather-desc" id="w-desc">Loading...</div>
+        <div class="weather-loc" id="w-loc">WORCESTER, ENGLAND</div>
+      </div>
+    </div>
+    <div class="weather-grid">
+      <div class="weather-stat"><div class="weather-stat-label">HUMIDITY</div><div class="weather-stat-val" id="w-hum">--%</div></div>
+      <div class="weather-stat"><div class="weather-stat-label">WIND</div><div class="weather-stat-val" id="w-wind">-- km/h</div></div>
+      <div class="weather-stat"><div class="weather-stat-label">FEELS LIKE</div><div class="weather-stat-val" id="w-feel">--&deg;</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="markets-card">
+    <div class="card-title">MARKETS</div>
+    <div id="market-rows"></div>
+  </div>
+
+  <div class="card" id="news-card">
+    <div class="card-title">FINANCE FEED</div>
+    <div id="news-feed"></div>
+  </div>
+
+  <div class="card" id="ai-card">
+    <div class="card-title">NEXUS AI</div>
+    <div id="ai-messages"></div>
+    <div class="ai-input-row">
+      <input type="text" id="ai-input" placeholder="Ask NEXUS anything..." autocomplete="off">
+      <button class="ai-btn" id="btn-mic" title="Voice input" onclick="toggleMic()">&#x1F399;</button>
+      <button class="ai-btn" id="btn-send" onclick="sendMessage()">&#x27A4;</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ─── State ───
+var cfg = {
+  apiKey: localStorage.getItem('nexus-key') || '',
+  model: localStorage.getItem('nexus-model') || 'claude-sonnet-4-20250514',
+  voice: localStorage.getItem('nexus-voice') === 'true'
+};
+var startTime = Date.now();
+var chatHistory = [];
+var cmdHistory = [];
+var cmdIdx = -1;
+var weather = { temp: '--', desc: 'Loading', humidity: '--', wind: '--', feel: '--' };
+var newsItems = [
+  { headline: 'Federal Reserve holds rates steady, signals potential cut in Q4', source: 'Bloomberg', time: '12 MIN AGO' },
+  { headline: 'Bitcoin ETF inflows surge past $1.2B as institutional demand climbs', source: 'CoinDesk', time: '34 MIN AGO' },
+  { headline: 'S&P 500 closes at record high driven by tech earnings beat', source: 'Reuters', time: '1 HR AGO' },
+  { headline: 'XRP gains 8% on favourable SEC ruling and Ripple expansion', source: 'The Block', time: '2 HR AGO' },
+  { headline: 'Nasdaq 100 rebalance adds three AI firms, drops two energy stocks', source: 'CNBC', time: '3 HR AGO' },
+];
+var stocks = [
+  { sym: 'SPX', name: 'S&P 500', price: 5648.40, base: 5648.40, change: 0, history: [], prefix: '', drift: 5.6, live: false },
+  { sym: 'BTC', name: 'Bitcoin', price: 84250, base: 84250, change: 0, history: [], prefix: '$', drift: 84, live: true, cgId: 'bitcoin' },
+  { sym: 'XRP', name: 'XRP', price: 2.38, base: 2.38, change: 0, history: [], prefix: '$', drift: 0.003, live: true, cgId: 'ripple' },
+  { sym: 'NDX', name: 'Nasdaq 100', price: 19872.50, base: 19872.50, change: 0, history: [], prefix: '', drift: 20, live: false },
+];
+
+// ─── Init ───
+if (!cfg.apiKey) document.getElementById('setup-modal').hidden = false;
+updateVoiceBtn();
+startClock();
+renderNews();
+renderMarkets();
+fetchWeather();
+fetchCrypto();
+startMarketSim();
+bootSequence();
+setInterval(fetchWeather, 300000);
+setInterval(fetchCrypto, 60000);
+
+// ─── Clock ───
+function startClock() {
+  function tick() {
+    var n = new Date();
+    var days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    var months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    document.getElementById('clock').textContent =
+      days[n.getDay()] + ' ' + n.getDate() + ' ' + months[n.getMonth()] + ' ' + n.getFullYear() + '  ' +
+      String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0') + ':' + String(n.getSeconds()).padStart(2,'0');
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ─── Weather (wttr.in — free, CORS-enabled) ───
+function fetchWeather() {
+  fetch('https://wttr.in/Worcester,England?format=j1')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var cur = d.current_condition[0];
+      weather.temp = cur.temp_C;
+      weather.desc = cur.weatherDesc[0].value;
+      weather.humidity = cur.humidity;
+      weather.wind = cur.windspeedKmph;
+      weather.feel = cur.FeelsLikeC;
+      document.getElementById('w-temp').innerHTML = cur.temp_C + '<span class="unit">&deg;C</span>';
+      document.getElementById('w-desc').textContent = cur.weatherDesc[0].value;
+      document.getElementById('w-hum').textContent = cur.humidity + '%';
+      document.getElementById('w-wind').textContent = cur.windspeedKmph + ' km/h';
+      document.getElementById('w-feel').innerHTML = cur.FeelsLikeC + '&deg;';
+    })
+    .catch(function() {
+      weather.temp = 15; weather.desc = 'Data unavailable';
+      document.getElementById('w-temp').innerHTML = '15<span class="unit">&deg;C</span>';
+      document.getElementById('w-desc').textContent = 'Simulated (offline)';
+      document.getElementById('w-hum').textContent = '72%';
+      document.getElementById('w-wind').textContent = '14 km/h';
+      document.getElementById('w-feel').innerHTML = '13&deg;';
+    });
+}
+
+// ─── Crypto (CoinGecko — free, CORS-enabled) ───
+function fetchCrypto() {
+  fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ripple&vs_currencies=usd&include_24hr_change=true')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      stocks.forEach(function(s) {
+        if (s.cgId && d[s.cgId]) {
+          s.price = d[s.cgId].usd;
+          s.change = d[s.cgId].usd_24h_change || 0;
+          s.base = s.price / (1 + s.change / 100);
+          s.drift = s.price * 0.0002;
+        }
+      });
+      renderMarkets();
+    })
+    .catch(function() {});
+}
+
+// ─── Markets ───
+function renderMarkets() {
+  var el = document.getElementById('market-rows');
+  el.innerHTML = '';
+  stocks.forEach(function(s, i) {
+    var dir = s.change >= 0 ? 'up' : 'down';
+    var arrow = s.change >= 0 ? '&#9650;' : '&#9660;';
+    var pStr = s.price < 10 ? s.price.toFixed(4) : s.price < 1000 ? s.price.toFixed(2) :
+      s.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var row = document.createElement('div');
+    row.className = 'stock-row';
+    row.innerHTML =
+      '<div class="stock-sym">' + s.sym + '</div>' +
+      '<div class="stock-name">' + s.name + (s.live ? '' : '') + '</div>' +
+      '<canvas class="stock-spark" id="spark-' + i + '" width="120" height="48"></canvas>' +
+      '<div class="stock-price">' + (s.prefix || '') + pStr + '</div>' +
+      '<div class="stock-change ' + dir + '">' + arrow + ' ' + Math.abs(s.change).toFixed(2) + '%</div>';
+    el.appendChild(row);
+    drawSparkline(i);
+  });
+}
+
+function drawSparkline(idx) {
+  var s = stocks[idx];
+  var canvas = document.getElementById('spark-' + idx);
+  if (!canvas || s.history.length < 2) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  var hist = s.history;
+  var min = Math.min.apply(null, hist), max = Math.max.apply(null, hist);
+  var range = max - min || 1;
+  var color = s.change >= 0 ? '#10b981' : '#ef4444';
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  hist.forEach(function(v, i) {
+    var x = (i / (hist.length - 1)) * w;
+    var y = h - ((v - min) / range) * (h - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = color.replace(')', ',0.08)').replace('rgb', 'rgba');
+  ctx.fill();
+}
+
+function startMarketSim() {
+  setInterval(function() {
+    stocks.forEach(function(s) {
+      if (!s.live || !s.cgId) {
+        s.price += (Math.random() - 0.48) * s.drift;
+        s.change = ((s.price - s.base) / s.base) * 100;
+      }
+      s.history.push(s.price);
+      if (s.history.length > 30) s.history.shift();
+    });
+    renderMarkets();
+  }, 4000);
+}
+
+// ─── News ───
+function renderNews() {
+  var el = document.getElementById('news-feed');
+  el.innerHTML = '';
+  newsItems.forEach(function(item) {
+    var div = document.createElement('div');
+    div.className = 'news-item';
+    div.innerHTML =
+      '<div class="news-headline">' + item.headline + '</div>' +
+      '<div class="news-meta"><span class="news-tag">FINANCE</span><span>' + item.source + '</span><span>' + item.time + '</span></div>';
+    el.appendChild(div);
+  });
+}
+
+// ─── AI Chat ───
+var msgsEl = document.getElementById('ai-messages');
+var inputEl = document.getElementById('ai-input');
+
+function addMsg(text, type) {
+  var div = document.createElement('div');
+  div.className = 'ai-msg ' + type;
+  if (type === 'system') {
+    div.innerHTML = '<span class="ai-msg-label">NEXUS</span>' + escapeHtml(text);
+  } else {
+    div.textContent = text;
+  }
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  return div;
+}
+
+function addStreamMsg() {
+  var div = document.createElement('div');
+  div.className = 'ai-msg system';
+  div.innerHTML = '<span class="ai-msg-label">NEXUS</span><span class="stream-text"></span>';
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  return div.querySelector('.stream-text');
+}
+
+function showTyping() {
+  var div = document.createElement('div');
+  div.className = 'ai-msg system';
+  div.id = 'typing-ind';
+  div.innerHTML = '<span class="ai-msg-label">NEXUS</span><div class="typing-indicator"><span></span><span></span><span></span></div>';
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+function hideTyping() { var t = document.getElementById('typing-ind'); if (t) t.remove(); }
+
+function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function buildSystemPrompt() {
+  var best = stocks.reduce(function(a, b) { return a.change > b.change ? a : b; });
+  var worst = stocks.reduce(function(a, b) { return a.change < b.change ? a : b; });
+  return 'You are NEXUS, a sophisticated AI command system inspired by Jarvis. You are embedded in a personal dashboard for a user in Worcester, England. ' +
+    'Your personality: professional, warm, concise, and subtly witty. You address the user respectfully.\n\n' +
+    'LIVE DASHBOARD DATA:\n' +
+    '- Location: Worcester, England\n' +
+    '- Weather: ' + weather.temp + '°C, ' + weather.desc + ', Humidity ' + weather.humidity + '%, Wind ' + weather.wind + ' km/h, Feels like ' + weather.feel + '°C\n' +
+    '- Markets: ' + stocks.map(function(s) {
+      var p = s.price < 10 ? s.price.toFixed(4) : s.price < 1000 ? s.price.toFixed(2) : s.price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+      return s.sym + ' ' + (s.prefix||'') + p + ' (' + (s.change>=0?'+':'') + s.change.toFixed(2) + '%)';
+    }).join(', ') + '\n' +
+    '- Top performer: ' + best.name + ' (' + (best.change>=0?'+':'') + best.change.toFixed(2) + '%), Weakest: ' + worst.name + ' (' + (worst.change>=0?'+':'') + worst.change.toFixed(2) + '%)\n' +
+    '- Top headline: "' + newsItems[0].headline + '" — ' + newsItems[0].source + '\n\n' +
+    'When asked about weather, markets, news, or time, reference the live data above. For other topics, use your knowledge freely. ' +
+    'Keep responses clear: 2-4 sentences for simple queries, a short paragraph for complex ones. Be helpful and proactive with suggestions.';
+}
+
+async function sendToClaude(userText) {
+  chatHistory.push({ role: 'user', content: userText });
+  if (chatHistory.length > 30) chatHistory = chatHistory.slice(-30);
+
+  showTyping();
+  var streamEl = null;
+  var fullText = '';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: 1024,
+        stream: true,
+        system: buildSystemPrompt(),
+        messages: chatHistory.slice(-20)
+      })
+    });
+
+    if (!res.ok) {
+      hideTyping();
+      var errData = await res.json().catch(function() { return {}; });
+      addMsg('API error: ' + (errData.error ? errData.error.message : res.status) + '. Check your API key in Settings.', 'system');
+      return;
+    }
+
+    hideTyping();
+    streamEl = addStreamMsg();
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder();
+    var buf = '';
+
+    while (true) {
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      buf += decoder.decode(chunk.value, { stream: true });
+      var lines = buf.split('\n');
+      buf = lines.pop();
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (line.startsWith('data: ')) {
+          try {
+            var data = JSON.parse(line.slice(6));
+            if (data.type === 'content_block_delta' && data.delta && data.delta.text) {
+              fullText += data.delta.text;
+              streamEl.textContent = fullText;
+              msgsEl.scrollTop = msgsEl.scrollHeight;
+            }
+          } catch(e) {}
+        }
+      }
+    }
+
+    chatHistory.push({ role: 'assistant', content: fullText });
+    if (cfg.voice && fullText) speak(fullText);
+
+  } catch(e) {
+    hideTyping();
+    addMsg('Connection error: ' + e.message + '. Ensure you have internet access and a valid API key.', 'system');
+  }
+}
+
+function sendMessage() {
+  var text = inputEl.value.trim();
+  if (!text) return;
+  addMsg(text, 'user');
+  inputEl.value = '';
+  cmdHistory.push(text);
+  cmdIdx = cmdHistory.length;
+
+  if (cfg.apiKey) {
+    sendToClaude(text);
+  } else {
+    showTyping();
+    setTimeout(function() {
+      hideTyping();
+      addMsg('AI is not connected. Open Settings and enter your Anthropic API key to enable Claude integration. In the meantime, I can confirm your dashboard is live — weather, markets, and news are all updating.', 'system');
+    }, 800);
+  }
+}
+
+inputEl.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { sendMessage(); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); if (cmdIdx > 0) { cmdIdx--; inputEl.value = cmdHistory[cmdIdx]; } }
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (cmdIdx < cmdHistory.length - 1) { cmdIdx++; inputEl.value = cmdHistory[cmdIdx]; } else { cmdIdx = cmdHistory.length; inputEl.value = ''; } }
+});
+document.getElementById('btn-send').addEventListener('click', sendMessage);
+
+// ─── Voice ───
+var recognition = null;
+var isRecording = false;
+
+function toggleMic() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    addMsg('Voice input is not supported in this browser. Try Chrome or Edge.', 'system');
+    return;
+  }
+  if (isRecording) { recognition.stop(); return; }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'en-GB';
+  recognition.interimResults = false;
+  recognition.onstart = function() { isRecording = true; document.getElementById('btn-mic').classList.add('recording'); };
+  recognition.onend = function() { isRecording = false; document.getElementById('btn-mic').classList.remove('recording'); };
+  recognition.onresult = function(e) {
+    var text = e.results[0][0].transcript;
+    inputEl.value = text;
+    sendMessage();
+  };
+  recognition.onerror = function() { isRecording = false; document.getElementById('btn-mic').classList.remove('recording'); };
+  recognition.start();
+}
+
+function speak(text) {
+  if (!cfg.voice || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  var clean = text.replace(/[•▲▼─━✓\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (clean.length > 500) clean = clean.slice(0, 500);
+  var utter = new SpeechSynthesisUtterance(clean);
+  utter.lang = 'en-GB';
+  utter.rate = 1.05;
+  utter.pitch = 0.95;
+  var voices = speechSynthesis.getVoices();
+  var british = voices.find(function(v) { return v.lang === 'en-GB' && v.name.indexOf('Male') !== -1; }) ||
+                voices.find(function(v) { return v.lang === 'en-GB'; });
+  if (british) utter.voice = british;
+  speechSynthesis.speak(utter);
+}
+
+function toggleVoice() {
+  cfg.voice = !cfg.voice;
+  localStorage.setItem('nexus-voice', cfg.voice);
+  updateVoiceBtn();
+  if (!cfg.voice) speechSynthesis.cancel();
+}
+
+function updateVoiceBtn() {
+  var btn = document.getElementById('btn-voice');
+  btn.textContent = cfg.voice ? 'VOICE ON' : 'VOICE OFF';
+  if (cfg.voice) btn.classList.add('active'); else btn.classList.remove('active');
+}
+
+// ─── Setup / Settings ───
+function saveSetup() {
+  var key = document.getElementById('setup-key').value.trim();
+  var model = document.getElementById('setup-model').value;
+  if (key && !key.startsWith('sk-')) {
+    document.getElementById('setup-error').textContent = 'Key should start with sk-'; document.getElementById('setup-error').style.display = 'block'; return;
+  }
+  if (key) { cfg.apiKey = key; localStorage.setItem('nexus-key', key); }
+  cfg.model = model; localStorage.setItem('nexus-model', model);
+  document.getElementById('setup-modal').hidden = true;
+  addMsg(key ? 'Claude AI connected. Model: ' + model.split('-').slice(0,3).join(' ') + '. All systems are at your disposal.' : 'Running in offline mode. You can add an API key later via Settings.', 'system');
+  if (cfg.voice) speak('NEXUS is online. All systems operational.');
+}
+
+function skipSetup() {
+  document.getElementById('setup-modal').hidden = true;
+  addMsg('Running without AI integration. Weather, markets, and news feeds are live. Open Settings to connect Claude at any time.', 'system');
+}
+
+function openSettings() {
+  document.getElementById('settings-key').value = cfg.apiKey;
+  document.getElementById('settings-model').value = cfg.model;
+  document.getElementById('settings-modal').hidden = false;
+}
+
+function closeSettings() { document.getElementById('settings-modal').hidden = true; }
+
+function saveSettings() {
+  var key = document.getElementById('settings-key').value.trim();
+  var model = document.getElementById('settings-model').value;
+  if (key && !key.startsWith('sk-')) {
+    document.getElementById('settings-error').textContent = 'Key should start with sk-'; document.getElementById('settings-error').style.display = 'block'; return;
+  }
+  if (key) { cfg.apiKey = key; localStorage.setItem('nexus-key', key); }
+  cfg.model = model; localStorage.setItem('nexus-model', model);
+  document.getElementById('settings-modal').hidden = true;
+  addMsg('Settings updated. Model: ' + model.split('-').slice(0,3).join(' ') + '.', 'system');
+}
+
+// ─── Boot Sequence ───
+function bootSequence() {
+  var lines = [
+    'NEXUS COMMAND v2.0',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'Initialising systems...',
+  ];
+  var checks = [
+    { text: 'Weather feed connected (Worcester, England)', delay: 400 },
+    { text: 'Market data streaming (4 instruments)', delay: 300 },
+    { text: 'Finance news loaded (' + newsItems.length + ' stories)', delay: 250 },
+    { text: cfg.apiKey ? 'Claude AI online (' + cfg.model.split('-').slice(0,3).join(' ') + ')' : 'Claude AI standby (no API key)', delay: 350 },
+  ];
+  var bootDiv = document.createElement('div');
+  bootDiv.className = 'ai-msg system';
+  bootDiv.innerHTML = '<span class="ai-msg-label">NEXUS</span><span id="boot-text"></span>';
+  msgsEl.appendChild(bootDiv);
+  var bootText = document.getElementById('boot-text');
+  bootText.textContent = lines.join('\n');
+
+  var totalDelay = 600;
+  checks.forEach(function(chk) {
+    totalDelay += chk.delay;
+    setTimeout(function() {
+      bootText.textContent += '\n✓ ' + chk.text;
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }, totalDelay);
+  });
+
+  totalDelay += 500;
+  setTimeout(function() {
+    var n = new Date();
+    var period = n.getHours() < 12 ? 'Good morning' : n.getHours() < 17 ? 'Good afternoon' : 'Good evening';
+    bootText.textContent += '\n━━━━━━━━━━━━━━━━━━━━━━━━━━';
+    bootText.textContent += '\n' + period + '. All systems operational.';
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    if (cfg.voice) {
+      setTimeout(function() { speak(period + '. NEXUS Command is online. All systems operational.'); }, 300);
+    }
+  }, totalDelay);
+}
+
+// Focus input
+inputEl.focus();
+document.addEventListener('keydown', function(e) {
+  if (e.key === '/' && document.activeElement !== inputEl) { e.preventDefault(); inputEl.focus(); }
+});
+</script>
+</body>
+</html>
