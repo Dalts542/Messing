@@ -436,12 +436,10 @@ async function tryFetch(url,opts,label){
 }
 async function fetchRacingAPI(){
   var api='https://api.theracingapi.com/v1/racecards?day=today';
-  var auth='Basic '+btoa(cfg.racingUser+':'+cfg.racingPass);
   var tries=[];
-  if(cfg.proxyUrl)tries.push([cfg.proxyUrl+'?url='+encodeURIComponent(api),{headers:{'Authorization':auth}},'custom-proxy']);
+  if(cfg.proxyUrl)tries.push([cfg.proxyUrl+'?url='+encodeURIComponent(api)+'&user='+encodeURIComponent(cfg.racingUser)+'&pass='+encodeURIComponent(cfg.racingPass),null,'custom-proxy']);
+  var auth='Basic '+btoa(cfg.racingUser+':'+cfg.racingPass);
   tries.push([api,{headers:{'Authorization':auth}},'direct']);
-  var cu='https://'+encodeURIComponent(cfg.racingUser)+':'+encodeURIComponent(cfg.racingPass)+'@api.theracingapi.com/v1/racecards?day=today',enc=encodeURIComponent(cu);
-  tries.push(['https://api.allorigins.win/raw?url='+enc,null,'allorigins'],['https://api.codetabs.com/v1/proxy?quest='+enc,null,'codetabs']);
   for(var i=0;i<tries.length;i++){var d=await tryFetch(tries[i][0],tries[i][1],tries[i][2]);if(d)return d}
   throw new Error('All fetch methods failed. Set up a Proxy URL in Settings — see racing-proxy-worker.js');
 }
