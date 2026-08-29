@@ -12,4 +12,6 @@
 .claude-flow/metrics/performance.json
 .claude-flow/metrics/security-audit.json
 .claude-flow/policy/
+.claude-flow/swarm/
+.swarm/state.json
 ruvector.db
