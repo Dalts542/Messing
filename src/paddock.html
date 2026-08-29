@@ -64,14 +64,12 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
 .runner-rank.gold{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
 .runner-rank.silver{background:rgba(192,192,192,0.1);border-color:rgba(192,192,192,0.3);color:#c0c0c0}
 .runner-rank.bronze{background:rgba(205,127,50,0.1);border-color:rgba(205,127,50,0.3);color:#cd7f32}
-.runner-name{font-weight:500}
-.runner-detail{font-size:11px;color:var(--text-mid);margin-top:2px}
+.runner-name{font-weight:500} .runner-detail{font-size:11px;color:var(--text-mid);margin-top:2px}
 .runner-form{font-family:var(--font-mono);font-size:11px;color:var(--text-mid);min-width:60px;text-align:center}
 .runner-rating{font-family:var(--font-mono);font-size:13px;font-weight:600;min-width:36px;text-align:right}
 .tips-bar{display:flex;gap:12px;padding:12px 16px;background:rgba(5,150,105,0.06);flex-wrap:wrap}
 .tip-chip{font-family:var(--font-mono);font-size:10px;letter-spacing:0.5px;padding:4px 10px;border-radius:4px;border:1px solid var(--border)}
-.tip-chip.win{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
-.tip-chip.ew{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.tip-chip.win{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)} .tip-chip.ew{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 
 .chat-input-row{display:flex;gap:8px;padding:12px 24px;border-top:1px solid var(--border);background:rgba(9,15,12,0.6)}
 #chat-input{flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:11px 16px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color .2s}
@@ -82,23 +80,17 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
 
 .typing-dots{display:flex;gap:4px;padding:4px 0}
 .typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:tdot .8s infinite}
-.typing-dots span:nth-child(2){animation-delay:.15s}
-.typing-dots span:nth-child(3){animation-delay:.3s}
+.typing-dots span:nth-child(2){animation-delay:.15s} .typing-dots span:nth-child(3){animation-delay:.3s}
 @keyframes tdot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
-
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(8px)}
 .modal{background:var(--surface);border:1px solid var(--border-bright);border-radius:14px;padding:32px;max-width:460px;width:90%;box-shadow:0 0 60px rgba(5,150,105,0.08)}
 .modal h2{font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:6px}
 .modal p{font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:16px}
 .modal input,.modal select{width:100%;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;margin-bottom:12px}
-.modal input:focus{border-color:var(--accent)}
-.modal label{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:6px}
+.modal input:focus{border-color:var(--accent)} .modal label{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:6px}
 .modal .btn-primary{width:100%;background:var(--accent);border:none;color:#000;font-family:var(--font-mono);font-weight:600;font-size:12px;letter-spacing:1px;padding:12px;border-radius:8px;cursor:pointer;margin-top:8px}
 .modal .btn-secondary{width:100%;background:none;border:1px solid var(--border);color:var(--text-mid);font-family:var(--font-mono);font-weight:500;font-size:12px;padding:12px;border-radius:8px;cursor:pointer;margin-top:8px}
-
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 </style>
 </head>
 <body>
@@ -181,19 +173,14 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
       <button class="sb-btn" data-q="Which races today offer the best each-way value? Look for competitive handicaps with large fields where an outsider has strong place claims.">Each-Way Value</button>
       <button class="sb-btn" data-q="What are the banker bets today - the horses with the strongest form that should win? Only include horses you rate 8/10 or higher.">Banker Bets</button>
     </div>
-    <hr class="sb-divider">
-    <div class="sb-section">
-      <div class="sb-title">ANALYSIS TOOLS</div>
-      <button class="sb-btn" data-q="Explain how to read horse racing form figures. What do the numbers, letters (P, F, U, R, C, D) mean? How should I interpret recent form vs older runs?">Form Guide</button>
-      <button class="sb-btn" data-q="Explain UK going descriptions from Heavy through to Firm. How does going affect different types of horses? What should I look for?">Going Explained</button>
-      <button class="sb-btn" data-q="Who are the most reliable UK horse racing tipsters? Cover newspaper tipsters, Racing Post analysts, and well-known social media tipsters. Rate their recent form.">Best Tipsters</button>
-      <button class="sb-btn" data-q="Explain the key factors I should consider when analyzing a horse race: form, class, distance, going, draw, jockey, trainer, course form, and weight. How do I weigh these factors?">Key Factors</button>
-    </div>
-    <hr class="sb-divider">
-    <div class="sb-section">
-      <div class="sb-title">RACECARD IMPORT</div>
+    <hr class="sb-divider"><div class="sb-section"><div class="sb-title">ANALYSIS TOOLS</div>
+      <button class="sb-btn" data-q="Explain how to read horse racing form figures. What do the numbers, letters (P, F, U, R, C, D) mean?">Form Guide</button>
+      <button class="sb-btn" data-q="Explain UK going descriptions from Heavy through to Firm. How does going affect different types of horses?">Going Explained</button>
+      <button class="sb-btn" data-q="Who are the most reliable UK horse racing tipsters? Cover newspaper and Racing Post analysts. Rate their recent form.">Best Tipsters</button>
+      <button class="sb-btn" data-q="Explain key factors when analyzing a horse race: form, class, distance, going, draw, jockey, trainer, course form, weight.">Key Factors</button>
+    </div><hr class="sb-divider"><div class="sb-section"><div class="sb-title">RACECARD IMPORT</div>
       <button class="sb-btn" id="sb-import" style="background:var(--gold-dim);border-color:rgba(212,160,23,0.3);color:var(--gold)">&#9889; Auto Import Racecards</button>
-      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:4px 4px 0">Fetches live racecards from The Racing API. Set credentials in Settings, or paste any racecard manually.</p>
+      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:4px 4px 0">Fetches racecards via proxy scraping or Racing API. Set proxy URL in Settings.</p>
     </div>
   </aside>
 
@@ -262,7 +249,7 @@ if(inputEl){
 if((lsGet('paddock-proxy')||'').indexOf('dawn-darkness')!==-1){lsSet('paddock-proxy','');cfg.proxyUrl='https://racingv2.ollie-dalton.workers.dev'}
 try{if(!cfg.apiKey&&!cfg.racingUser)$('setup-modal').hidden=false}catch(e){}
 try{bootSequence()}catch(e){}
-if(cfg.racingUser&&cfg.racingPass)setTimeout(autoFetchRaces,500);
+if(cfg.proxyUrl)setTimeout(autoFetchRaces,500);
 
 function bootSequence(){
   addMsg('Welcome to Paddock Intelligence — your AI racing analyst.\n\n• Analyze any race (e.g. "Cheltenham 2:30")\n• Rank horses 1-10 with form ratings\n• WIN / EACH-WAY / VALUE BET verdicts\n• Paste a racecard for full breakdown\n\nUse the sidebar or ask anything about racing.'+(cfg.apiKey?'':'\n\n⚠ No API key — open Settings to connect Claude AI.'),'system');
@@ -422,26 +409,42 @@ function saveSettings(){
   addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.'+(ru&&rp?' Racing API connected.':'')+(px?' Proxy: '+px:''),'system');
 }
 
-// ─── Auto-fetch racecards via The Racing API ───
-async function tryFetch(url,opts,label){
-  try{
-    var r=await fetch(url,Object.assign({signal:AbortSignal.timeout(15000)},opts||{}));
-    console.log('Paddock ['+label+'] HTTP '+r.status+' '+r.statusText);
-    var text=await r.text();
-    if(!r.ok){console.log('Paddock ['+label+'] error body: '+text.substring(0,500));if(text.indexOf('Basic Plan required')!==-1)throw new Error('Racing API requires a paid Basic Plan for racecards. Upgrade at theracingapi.com, or paste racecards manually via Import.');return null}
-    console.log('Paddock ['+label+'] response: '+text.substring(0,300));
-    try{var j=JSON.parse(text);if(j.racecards)return j;if(j.contents){var c=JSON.parse(j.contents);if(c.racecards)return c}}catch(e){console.log('Paddock ['+label+'] parse error: '+e.message)}
-    return null;
-  }catch(e){console.log('Paddock ['+label+'] '+e.message);return null}
+// ─── Fetch racecards — API then free scraping fallback ───
+function pk(o){for(var k in o){var v=o[k];if(Array.isArray(v)&&v.length&&(v[0].course||v[0].courseName||v[0].runners||v[0].horses))return v;if(v&&typeof v==='object'&&!Array.isArray(v)){var r=pk(v);if(r)return r}}return null}
+function norm(r){
+  var run=(r.runners||r.horses||r.entries||[]).map(function(h){return{horse:h.horse||h.horseName||h.name||'',jockey:h.jockey||h.jockeyName||'',trainer:h.trainer||h.trainerName||'',form:h.form||h.formFigures||'',age:h.age||h.horseAge||'',weight:h.weight||h.weightLbs||h.wgt||'',draw:h.draw||h.stallDraw||'',official_rating:h.official_rating||h.or||h.officialRating||''}});
+  return{course:r.course||r.courseName||r.meetingName||r.venue||'',off_time:r.off_time||r.offTime||r.time||r.raceTime||r.startTime||'',race_name:r.race_name||r.raceName||r.raceTitle||r.title||r.name||'',race_class:r.race_class||r.raceClass||r.class||'',distance:r.distance||r.distanceDesc||r.dist||'',going:r.going||r.goingDesc||'',runners:run};
 }
-async function fetchRacingAPI(){
-  var api='https://api.theracingapi.com/v1/racecards?day=today';
-  var tries=[];
-  if(cfg.proxyUrl)tries.push([cfg.proxyUrl+'?url='+encodeURIComponent(api)+'&user='+encodeURIComponent(cfg.racingUser)+'&pass='+encodeURIComponent(cfg.racingPass),null,'custom-proxy']);
-  var auth='Basic '+btoa(cfg.racingUser+':'+cfg.racingPass);
-  tries.push([api,{headers:{'Authorization':auth}},'direct']);
-  for(var i=0;i<tries.length;i++){var d=await tryFetch(tries[i][0],tries[i][1],tries[i][2]);if(d)return d}
-  throw new Error('All fetch methods failed. Set up a Proxy URL in Settings — see racing-proxy-worker.js');
+async function scrapeRacecards(){
+  if(!cfg.proxyUrl)return null;
+  addMsg('Scraping free racecard data...','system');
+  var urls=['https://www.racingpost.com/racecards','https://www.sportinglife.com/racing/racecards/today'];
+  for(var i=0;i<urls.length;i++){
+    var label=urls[i].split('/')[2].split('.')[1];
+    try{
+      var r=await fetch(cfg.proxyUrl+'?url='+encodeURIComponent(urls[i]),{signal:AbortSignal.timeout(20000)});
+      if(!r.ok){console.log('Paddock ['+label+'] HTTP '+r.status);continue}
+      var html=await r.text();console.log('Paddock ['+label+'] '+html.length+' bytes');
+      var m=html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if(m){try{var nd=JSON.parse(m[1]);var pp=nd.props&&nd.props.pageProps;if(pp){console.log('Paddock ['+label+'] pageProps: '+Object.keys(pp).join(','));var arr=pk(pp);if(arr){var out={racecards:arr.map(norm)};console.log('Paddock ['+label+'] extracted '+out.racecards.length+' races');return out}}}catch(e){console.log('Paddock ['+label+'] JSON parse: '+e.message)}}
+      var doc=new DOMParser().parseFromString(html,'text/html'),races=[];
+      doc.querySelectorAll('a[href*="/racecards/"]').forEach(function(a){var t=a.textContent.trim(),tm=t.match(/(\d{1,2}[:.]\d{2})/);if(tm)races.push({off_time:tm[1].replace('.',':'),race_name:t.replace(tm[0],'').trim(),course:'',runners:[]})});
+      if(races.length){console.log('Paddock ['+label+'] '+races.length+' races from links');return{racecards:races}}
+    }catch(e){console.log('Paddock ['+label+'] '+e.message)}
+  }
+  return null;
+}
+async function fetchRacecards(){
+  if(cfg.racingUser&&cfg.racingPass&&cfg.proxyUrl){
+    try{
+      var r=await fetch(cfg.proxyUrl+'?url='+encodeURIComponent('https://api.theracingapi.com/v1/racecards?day=today')+'&user='+encodeURIComponent(cfg.racingUser)+'&pass='+encodeURIComponent(cfg.racingPass),{signal:AbortSignal.timeout(15000)});
+      var text=await r.text();
+      if(r.ok){try{var j=JSON.parse(text);if(j.racecards)return j}catch(e){}}
+      console.log('Paddock [api] '+(text.indexOf('Basic Plan')!==-1?'Free tier — trying scraper':'HTTP '+r.status));
+    }catch(e){console.log('Paddock [api] '+e.message)}
+  }
+  var s=await scrapeRacecards();if(s)return s;
+  throw new Error('Could not fetch racecards. Paste a racecard via Import, or upgrade Racing API to Basic Plan.');
 }
 
 function renderRacecards(data){
@@ -485,12 +488,12 @@ function analyzeRace(race){
 
 async function autoFetchRaces(){
   var btn=$('btn-auto-fetch');
-  if(!cfg.racingUser||!cfg.racingPass){
-    addMsg('Racing API credentials not set — enter them in Settings.','system');
-    if(btn)btn.textContent='NO CREDENTIALS';return}
-  if(btn)btn.textContent='FETCHING LIVE RACECARDS...';
-  try{var data=await fetchRacingAPI();if(btn)btn.textContent='LOADED';$('import-modal').hidden=true;renderRacecards(data)}
-  catch(e){if(btn)btn.textContent='FETCH FAILED';addMsg('Racing API error: '+e.message,'system')}
+  if(!cfg.proxyUrl){
+    addMsg('No proxy URL set — enter your Cloudflare Worker URL in Settings to enable racecard fetching.','system');
+    if(btn)btn.textContent='NO PROXY';return}
+  if(btn)btn.textContent='FETCHING RACECARDS...';
+  try{var data=await fetchRacecards();if(btn)btn.textContent='LOADED';$('import-modal').hidden=true;renderRacecards(data)}
+  catch(e){if(btn)btn.textContent='FETCH FAILED';addMsg('Racecard error: '+e.message,'system')}
 }
 
 if(inputEl)inputEl.focus();

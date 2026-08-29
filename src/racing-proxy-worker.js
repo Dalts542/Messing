@@ -1,12 +1,26 @@
-// Cloudflare Worker — CORS proxy for The Racing API
+// Cloudflare Worker — CORS proxy for racing data
 // Deploy: https://workers.cloudflare.com → Create Worker → paste this → Deploy
 //
 // Once deployed, copy your worker URL (e.g. https://racing-proxy.your-name.workers.dev)
 // and paste it into Paddock Intelligence Settings → Proxy URL
 //
-// Usage: ?url=https://api.theracingapi.com/...&user=USERNAME&pass=PASSWORD
-// Credentials are passed as query params so they work from file:// origins
-// where browsers strip Authorization headers during CORS preflight.
+// Usage:
+//   API mode:  ?url=https://api.theracingapi.com/...&user=USER&pass=PASS
+//   Scrape mode: ?url=https://www.racingpost.com/racecards/...
+
+const ALLOWED_DOMAINS = [
+  'api.theracingapi.com',
+  'www.racingpost.com',
+  'www.sportinglife.com',
+  'www.timeform.com'
+];
+
+function isDomainAllowed(targetUrl) {
+  try {
+    const host = new URL(targetUrl).hostname;
+    return ALLOWED_DOMAINS.includes(host);
+  } catch(e) { return false; }
+}
 
 export default {
   async fetch(request) {
@@ -24,27 +38,33 @@ export default {
     }
 
     const target = url.searchParams.get('url');
-    if (!target || !target.startsWith('https://api.theracingapi.com/')) {
-      return new Response('Racing API proxy. Use ?url=https://api.theracingapi.com/...&user=USER&pass=PASS', {
+    if (!target || !isDomainAllowed(target)) {
+      return new Response('Racing proxy. Allowed domains: ' + ALLOWED_DOMAINS.join(', '), {
         status: 200,
         headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
+    const fetchHeaders = {
+      'Accept': 'text/html,application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    };
+
     const user = url.searchParams.get('user');
     const pass = url.searchParams.get('pass');
-    const headers = { 'Accept': 'application/json' };
     if (user && pass) {
-      headers['Authorization'] = 'Basic ' + btoa(user + ':' + pass);
+      fetchHeaders['Authorization'] = 'Basic ' + btoa(user + ':' + pass);
+      fetchHeaders['Accept'] = 'application/json';
     }
 
-    const res = await fetch(target, { headers });
+    const res = await fetch(target, { headers: fetchHeaders, redirect: 'follow' });
     const body = await res.text();
+    const contentType = res.headers.get('Content-Type') || 'text/html';
 
     return new Response(body, {
       status: res.status,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*'
       }
     });
