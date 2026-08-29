@@ -121,6 +121,18 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
 </div>
 </div>
 
+<div class="modal-overlay" id="import-modal" hidden>
+<div class="modal" style="max-width:620px">
+  <h2>Import Racecards</h2>
+  <p>Auto-fetch today's races or paste a racecard from Racing Post, Sporting Life, or any source. Claude will parse, rank every runner, and give verdicts.</p>
+  <button class="btn-primary" id="btn-auto-fetch" style="margin-bottom:12px">&#9889; AUTO FETCH TODAY'S RACES</button>
+  <label>OR PASTE RACECARD</label>
+  <textarea id="import-text" rows="8" style="width:100%;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:11px;resize:vertical;margin-bottom:8px" placeholder="Paste racecard text here...&#10;&#10;e.g. from Racing Post, Sporting Life, At The Races&#10;&#10;2:30 Cheltenham - Novices' Hurdle (Class 3) 2m&#10;1. Horse Name (J: P Townend, T: W Mullins) Form: 1-2-1 9st 7lb"></textarea>
+  <button class="btn-primary" id="btn-parse-card">PARSE &amp; ANALYZE</button>
+  <button class="btn-secondary" id="btn-close-import">CANCEL</button>
+</div>
+</div>
+
 <div class="modal-overlay" id="settings-modal" hidden>
 <div class="modal">
   <h2>Settings</h2>
@@ -142,6 +154,7 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
   <div class="header-actions">
     <button id="btn-today">TODAY'S RACING</button>
     <button id="btn-quick-tips">QUICK TIPS</button>
+    <button id="btn-import">IMPORT RACES</button>
     <button id="btn-settings">SETTINGS</button>
   </div>
 </header>
@@ -165,8 +178,9 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
     </div>
     <hr class="sb-divider">
     <div class="sb-section">
-      <div class="sb-title">PASTE & ANALYZE</div>
-      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:0 4px">Paste a full racecard from Racing Post, At The Races, or any source into the chat — I'll analyze every runner and rank them 1-10.</p>
+      <div class="sb-title">RACECARD IMPORT</div>
+      <button class="sb-btn" id="sb-import" style="background:var(--gold-dim);border-color:rgba(212,160,23,0.3);color:var(--gold)">&#9889; Auto Import Racecards</button>
+      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:4px 4px 0">Fetches today's cards from Racing Post, Sporting Life, or Timeform. Or paste any racecard into the chat.</p>
     </div>
   </aside>
 
@@ -186,7 +200,7 @@ function $(id){return document.getElementById(id)}
 function listen(id,fn){var el=$(id);if(el)el.addEventListener('click',fn)}
 
 var cfg={
-  apiKey:lsGet('paddock-key')||'',
+  apiKey:lsGet('paddock-key')||lsGet('nexus-api-key')||'',
   model:lsGet('paddock-model')||'claude-sonnet-4-20250514'
 };
 var chatHistory=[];
@@ -202,12 +216,22 @@ listen('btn-save-set',saveSettings);
 listen('btn-close-set',function(){$('settings-modal').hidden=true});
 listen('btn-settings',function(){$('set-key').value=cfg.apiKey;$('set-model').value=cfg.model;$('settings-modal').hidden=false});
 listen('btn-send',sendMessage);
+listen('btn-import',function(){$('import-modal').hidden=false});
+listen('btn-close-import',function(){$('import-modal').hidden=true});
+listen('btn-auto-fetch',autoFetchRaces);
+listen('btn-parse-card',function(){
+  var text=$('import-text').value.trim();
+  if(!text){return}
+  $('import-modal').hidden=true;
+  submitQuery('RACECARD IMPORT — Parse and analyze this full racecard. Extract every runner, rank them 1-10, and give WIN / EACH-WAY / VALUE BET verdicts:\n\n'+text);
+});
 listen('btn-today',function(){submitQuery("What are today's major UK and Irish horse racing meetings? For each meeting, list race times, class, distance, and going if known.")});
 listen('btn-quick-tips',function(){submitQuery("Give me your top 5 tips across all of today's UK and Irish racing. For each tip, include: race time & course, horse name, form figures, key reasons, confidence rating out of 10, and suggested bet type (win/each-way). Format as a structured analysis.")});
 
 document.querySelectorAll('.sb-btn[data-q]').forEach(function(btn){
   btn.addEventListener('click',function(){submitQuery(this.getAttribute('data-q'))});
 });
+listen('sb-import',function(){$('import-modal').hidden=false});
 
 if(inputEl){
   inputEl.addEventListener('keydown',function(e){
@@ -390,6 +414,43 @@ function saveSettings(){
   cfg.model=model;lsSet('paddock-model',model);
   $('settings-modal').hidden=true;
   addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.','system');
+}
+
+// ─── Auto-fetch racecards ───
+var RACE_SOURCES=[
+  {url:'https://www.racingpost.com/racecards',name:'Racing Post'},
+  {url:'https://www.sportinglife.com/racing/racecards',name:'Sporting Life'},
+  {url:'https://www.timeform.com/horse-racing/racecards/today',name:'Timeform'}
+];
+var PROXY='https://api.allorigins.win/raw?url=';
+
+async function autoFetchRaces(){
+  var btn=$('btn-auto-fetch');
+  if(btn)btn.textContent='FETCHING...';
+  var fetched=false;
+  for(var i=0;i<RACE_SOURCES.length;i++){
+    try{
+      var res=await fetch(PROXY+encodeURIComponent(RACE_SOURCES[i].url),{signal:AbortSignal.timeout(12000)});
+      if(!res.ok)continue;
+      var html=await res.text();
+      var doc=new DOMParser().parseFromString(html,'text/html');
+      // Strip scripts, styles, nav, footer — keep main content text
+      doc.querySelectorAll('script,style,nav,footer,header,noscript,iframe,svg').forEach(function(el){el.remove()});
+      var text=(doc.body?doc.body.textContent:'').replace(/\s{3,}/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+      if(text.length>200){
+        // Trim to ~8000 chars for Claude context
+        if(text.length>8000)text=text.substring(0,8000);
+        $('import-text').value=text;
+        if(btn)btn.textContent='FETCHED FROM '+RACE_SOURCES[i].name.toUpperCase();
+        addMsg('Fetched racecard data from '+RACE_SOURCES[i].name+'. Click "Parse & Analyze" to import, or edit the text first.','system');
+        fetched=true;break;
+      }
+    }catch(e){}
+  }
+  if(!fetched){
+    if(btn)btn.textContent='FETCH FAILED — PASTE BELOW';
+    addMsg('Auto-fetch unavailable (sites may block proxied requests). Paste a racecard from Racing Post or Sporting Life into the import box instead.','system');
+  }
 }
 
 if(inputEl)inputEl.focus();
