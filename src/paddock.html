@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paddock Intelligence</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+:root{
+  --bg:#090f0c;--surface:rgba(14,22,18,0.92);--surface-raised:#152019;
+  --border:rgba(5,150,105,0.14);--border-bright:rgba(5,150,105,0.35);
+  --accent:#059669;--accent-dim:rgba(5,150,105,0.1);
+  --gold:#d4a017;--gold-dim:rgba(212,160,23,0.12);
+  --green:#10b981;--red:#ef4444;--amber:#f59e0b;
+  --text:#e2e8f0;--text-mid:#94a3b8;--text-dim:#475569;
+  --font-display:'Playfair Display',Georgia,serif;
+  --font-ui:'Inter',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 30% 60%,rgba(5,150,105,0.05),transparent 60%),radial-gradient(ellipse at 70% 20%,rgba(212,160,23,0.03),transparent 50%);pointer-events:none;z-index:0}
+
+header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);backdrop-filter:blur(12px);background:rgba(9,15,12,0.85)}
+.logo{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:18px;letter-spacing:1px;color:var(--text)}
+.logo span{color:var(--accent)}
+.logo-icon{font-size:22px}
+.header-actions{display:flex;gap:8px}
+.header-actions button{background:var(--accent-dim);border:1px solid var(--border);color:var(--text-mid);border-radius:6px;padding:6px 14px;cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:0.5px;transition:all .2s}
+.header-actions button:hover{border-color:var(--accent);color:var(--accent)}
+
+main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;height:calc(100vh - 51px);min-height:0}
+@media(max-width:800px){main{grid-template-columns:1fr}#sidebar{display:none}}
+
+#sidebar{border-right:1px solid var(--border);padding:16px;overflow-y:auto;background:rgba(9,15,12,0.5)}
+.sb-title{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.sb-title::before{content:'';width:3px;height:10px;background:var(--accent);border-radius:2px}
+.sb-btn{display:block;width:100%;text-align:left;background:none;border:1px solid transparent;color:var(--text-mid);font-size:12px;padding:8px 10px;border-radius:6px;cursor:pointer;margin-bottom:4px;transition:all .15s;font-family:var(--font-ui)}
+.sb-btn:hover{background:var(--accent-dim);border-color:var(--border);color:var(--text)}
+.sb-btn.active{background:var(--accent-dim);border-color:var(--border-bright);color:var(--accent)}
+.sb-section{margin-bottom:20px}
+.sb-meeting{font-family:var(--font-display);font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;padding-left:4px}
+.sb-race{font-family:var(--font-mono);font-size:11px}
+.sb-divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+
+#chat-panel{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+#chat-messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
+
+.msg{font-size:13px;line-height:1.7;max-width:88%;border-radius:10px;padding:14px 18px}
+.msg.system{background:var(--surface);border:1px solid var(--border);align-self:flex-start;white-space:pre-wrap;word-wrap:break-word}
+.msg.user{background:var(--accent-dim);border:1px solid var(--border-bright);align-self:flex-end}
+.msg-label{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--accent);margin-bottom:6px}
+.msg.user .msg-label{color:var(--gold)}
+.msg a{color:var(--accent);text-decoration:underline}
+
+.race-card{background:var(--surface-raised);border:1px solid var(--border-bright);border-radius:10px;overflow:hidden;margin:8px 0;max-width:100%}
+.race-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.race-name{font-family:var(--font-display);font-size:15px;font-weight:600}
+.race-meta{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:0.5px}
+.race-runner{display:grid;grid-template-columns:32px 1fr auto auto;gap:10px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(30,41,59,0.3);font-size:12px}
+.race-runner:last-child{border:none}
+.runner-rank{font-family:var(--font-mono);font-weight:600;font-size:14px;text-align:center;width:28px;height:28px;line-height:28px;border-radius:6px;background:var(--surface);border:1px solid var(--border)}
+.runner-rank.gold{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.runner-rank.silver{background:rgba(192,192,192,0.1);border-color:rgba(192,192,192,0.3);color:#c0c0c0}
+.runner-rank.bronze{background:rgba(205,127,50,0.1);border-color:rgba(205,127,50,0.3);color:#cd7f32}
+.runner-name{font-weight:500}
+.runner-detail{font-size:11px;color:var(--text-mid);margin-top:2px}
+.runner-form{font-family:var(--font-mono);font-size:11px;color:var(--text-mid);min-width:60px;text-align:center}
+.runner-rating{font-family:var(--font-mono);font-size:13px;font-weight:600;min-width:36px;text-align:right}
+.tips-bar{display:flex;gap:12px;padding:12px 16px;background:rgba(5,150,105,0.06);flex-wrap:wrap}
+.tip-chip{font-family:var(--font-mono);font-size:10px;letter-spacing:0.5px;padding:4px 10px;border-radius:4px;border:1px solid var(--border)}
+.tip-chip.win{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.tip-chip.ew{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+.chat-input-row{display:flex;gap:8px;padding:12px 24px;border-top:1px solid var(--border);background:rgba(9,15,12,0.6)}
+#chat-input{flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:11px 16px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color .2s}
+#chat-input:focus{border-color:var(--accent)}
+#chat-input::placeholder{color:var(--text-dim)}
+.chat-btn{background:var(--accent-dim);border:1px solid var(--border-bright);color:var(--accent);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;transition:all .2s;display:flex;align-items:center}
+.chat-btn:hover{background:rgba(5,150,105,0.2)}
+
+.typing-dots{display:flex;gap:4px;padding:4px 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:tdot .8s infinite}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(8px)}
+.modal{background:var(--surface);border:1px solid var(--border-bright);border-radius:14px;padding:32px;max-width:460px;width:90%;box-shadow:0 0 60px rgba(5,150,105,0.08)}
+.modal h2{font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:6px}
+.modal p{font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:16px}
+.modal input,.modal select{width:100%;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;margin-bottom:12px}
+.modal input:focus{border-color:var(--accent)}
+.modal label{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:6px}
+.modal .btn-primary{width:100%;background:var(--accent);border:none;color:#000;font-family:var(--font-mono);font-weight:600;font-size:12px;letter-spacing:1px;padding:12px;border-radius:8px;cursor:pointer;margin-top:8px}
+.modal .btn-secondary{width:100%;background:none;border:1px solid var(--border);color:var(--text-mid);font-family:var(--font-mono);font-weight:500;font-size:12px;padding:12px;border-radius:8px;cursor:pointer;margin-top:8px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="modal-overlay" id="setup-modal" hidden>
+<div class="modal">
+  <h2>Paddock Intelligence</h2>
+  <p>Enter your Anthropic API key to enable Claude-powered race analysis, form ratings, and tipster-grade picks. Stored locally only.</p>
+  <p style="font-size:11px;color:var(--text-dim)">Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></p>
+  <label>API KEY</label>
+  <input type="password" id="setup-key" placeholder="sk-ant-...">
+  <label>MODEL</label>
+  <select id="setup-model">
+    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (recommended)</option>
+    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster)</option>
+    <option value="claude-opus-4-20250514">Claude Opus 4 (deepest analysis)</option>
+  </select>
+  <button class="btn-primary" id="btn-init">ENTER THE PADDOCK</button>
+  <button class="btn-secondary" id="btn-skip">BROWSE WITHOUT AI</button>
+</div>
+</div>
+
+<div class="modal-overlay" id="settings-modal" hidden>
+<div class="modal">
+  <h2>Settings</h2>
+  <label>API KEY</label>
+  <input type="password" id="set-key" placeholder="sk-ant-...">
+  <label>MODEL</label>
+  <select id="set-model">
+    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+    <option value="claude-opus-4-20250514">Claude Opus 4</option>
+  </select>
+  <button class="btn-primary" id="btn-save-set">SAVE</button>
+  <button class="btn-secondary" id="btn-close-set">CANCEL</button>
+</div>
+</div>
+
+<header>
+  <div class="logo"><span class="logo-icon">&#127943;</span> PADDOCK <span>INTELLIGENCE</span></div>
+  <div class="header-actions">
+    <button id="btn-today">TODAY'S RACING</button>
+    <button id="btn-quick-tips">QUICK TIPS</button>
+    <button id="btn-settings">SETTINGS</button>
+  </div>
+</header>
+
+<main>
+  <aside id="sidebar">
+    <div class="sb-section">
+      <div class="sb-title">QUICK QUERIES</div>
+      <button class="sb-btn" data-q="What are today's major UK and Irish race meetings? List each meeting with race times, distances, and class.">Today's Meetings</button>
+      <button class="sb-btn" data-q="Give me your top 3 tips across all of today's UK racing. For each: the race, your pick, brief reasoning, and suggested odds range.">Top 3 Tips</button>
+      <button class="sb-btn" data-q="Which races today offer the best each-way value? Look for competitive handicaps with large fields where an outsider has strong place claims.">Each-Way Value</button>
+      <button class="sb-btn" data-q="What are the banker bets today - the horses with the strongest form that should win? Only include horses you rate 8/10 or higher.">Banker Bets</button>
+    </div>
+    <hr class="sb-divider">
+    <div class="sb-section">
+      <div class="sb-title">ANALYSIS TOOLS</div>
+      <button class="sb-btn" data-q="Explain how to read horse racing form figures. What do the numbers, letters (P, F, U, R, C, D) mean? How should I interpret recent form vs older runs?">Form Guide</button>
+      <button class="sb-btn" data-q="Explain UK going descriptions from Heavy through to Firm. How does going affect different types of horses? What should I look for?">Going Explained</button>
+      <button class="sb-btn" data-q="Who are the most reliable UK horse racing tipsters? Cover newspaper tipsters, Racing Post analysts, and well-known social media tipsters. Rate their recent form.">Best Tipsters</button>
+      <button class="sb-btn" data-q="Explain the key factors I should consider when analyzing a horse race: form, class, distance, going, draw, jockey, trainer, course form, and weight. How do I weigh these factors?">Key Factors</button>
+    </div>
+    <hr class="sb-divider">
+    <div class="sb-section">
+      <div class="sb-title">PASTE & ANALYZE</div>
+      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:0 4px">Paste a full racecard from Racing Post, At The Races, or any source into the chat — I'll analyze every runner and rank them 1-10.</p>
+    </div>
+  </aside>
+
+  <div id="chat-panel">
+    <div id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask about any race, horse, or meeting..." autocomplete="off">
+      <button class="chat-btn" id="btn-send">&#x27A4;</button>
+    </div>
+  </div>
+</main>
+
+<script>
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function $(id){return document.getElementById(id)}
+function listen(id,fn){var el=$(id);if(el)el.addEventListener('click',fn)}
+
+var cfg={
+  apiKey:lsGet('paddock-key')||'',
+  model:lsGet('paddock-model')||'claude-sonnet-4-20250514'
+};
+var chatHistory=[];
+var cmdHistory=[];
+var cmdIdx=-1;
+var msgsEl=$('chat-messages');
+var inputEl=$('chat-input');
+
+// ─── Event listeners FIRST ───
+listen('btn-init',saveSetup);
+listen('btn-skip',skipSetup);
+listen('btn-save-set',saveSettings);
+listen('btn-close-set',function(){$('settings-modal').hidden=true});
+listen('btn-settings',function(){$('set-key').value=cfg.apiKey;$('set-model').value=cfg.model;$('settings-modal').hidden=false});
+listen('btn-send',sendMessage);
+listen('btn-today',function(){submitQuery("What are today's major UK and Irish horse racing meetings? For each meeting, list race times, class, distance, and going if known.")});
+listen('btn-quick-tips',function(){submitQuery("Give me your top 5 tips across all of today's UK and Irish racing. For each tip, include: race time & course, horse name, form figures, key reasons, confidence rating out of 10, and suggested bet type (win/each-way). Format as a structured analysis.")});
+
+document.querySelectorAll('.sb-btn[data-q]').forEach(function(btn){
+  btn.addEventListener('click',function(){submitQuery(this.getAttribute('data-q'))});
+});
+
+if(inputEl){
+  inputEl.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){sendMessage();return}
+    if(e.key==='ArrowUp'){e.preventDefault();if(cmdIdx>0){cmdIdx--;inputEl.value=cmdHistory[cmdIdx]}}
+    if(e.key==='ArrowDown'){e.preventDefault();if(cmdIdx<cmdHistory.length-1){cmdIdx++;inputEl.value=cmdHistory[cmdIdx]}else{cmdIdx=cmdHistory.length;inputEl.value=''}}
+  });
+}
+
+// ─── Init ───
+try{if(!cfg.apiKey)$('setup-modal').hidden=false}catch(e){}
+try{bootSequence()}catch(e){}
+
+function bootSequence(){
+  addMsg('Welcome to Paddock Intelligence — your AI-powered racing analyst.\n\n'+
+    'I can help you with:\n'+
+    '• Analyze any race — type a meeting & time (e.g. "Cheltenham 2:30")\n'+
+    '• Rank horses 1-10 with form analysis and ratings\n'+
+    '• Provide tipster-grade picks with win, each-way, and value bets\n'+
+    '• Explain form figures, going, and key racing factors\n'+
+    '• Paste a full racecard and I\'ll break down every runner\n\n'+
+    'Use the sidebar for quick queries, or just ask me anything about racing.'+(cfg.apiKey?'':'\n\n⚠ No API key set — open Settings to connect Claude AI.'),'system');
+}
+
+// ─── Chat ───
+function addMsg(text,type){
+  if(!msgsEl)return;
+  var div=document.createElement('div');
+  div.className='msg '+type;
+  if(type==='system'){
+    div.innerHTML='<span class="msg-label">PADDOCK</span>'+escapeHtml(text);
+  }else{
+    div.innerHTML='<span class="msg-label">YOU</span>'+escapeHtml(text);
+  }
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+  return div;
+}
+
+function addStreamMsg(){
+  if(!msgsEl)return document.createElement('span');
+  var div=document.createElement('div');
+  div.className='msg system';
+  div.innerHTML='<span class="msg-label">PADDOCK</span><span class="stream-out"></span>';
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+  return{el:div,textEl:div.querySelector('.stream-out')};
+}
+
+function showTyping(){
+  if(!msgsEl)return;
+  var d=document.createElement('div');d.className='msg system';d.id='typing-ind';
+  d.innerHTML='<span class="msg-label">PADDOCK</span><div class="typing-dots"><span></span><span></span><span></span></div>';
+  msgsEl.appendChild(d);msgsEl.scrollTop=msgsEl.scrollHeight;
+}
+function hideTyping(){var t=$('typing-ind');if(t)t.remove()}
+function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+var SYSTEM_PROMPT='You are Paddock Intelligence, an expert horse racing analyst with deep knowledge of UK and Irish flat racing, National Hunt, and all-weather racing. You combine form analysis, going preferences, trainer/jockey stats, class assessment, and track knowledge to provide professional-grade race analysis.\n\n'+
+'ANALYSIS FORMAT:\nWhen analyzing a specific race, structure your response clearly:\n\n'+
+'1. RACE OVERVIEW — course, distance, going, class, prize money if known\n'+
+'2. RUNNER RANKINGS — rank each horse 1 to 10 (or fewer). For each:\n'+
+'   • Name, recent form figures, jockey, trainer\n'+
+'   • Rating out of 10\n'+
+'   • Key analysis: form reading, going suitability, distance, class\n'+
+'3. VERDICT — your picks:\n'+
+'   WIN: [horse] — reasoning\n'+
+'   EACH-WAY: [horse] — reasoning\n'+
+'   VALUE BET: [horse at bigger price] — reasoning\n'+
+'4. DANGERS — horses that could outrun their price\n\n'+
+'TIPSTER ANALYSIS:\nWhen discussing tipsters, reference well-known UK racing tipsters: Tom Segal (Pricewise), Hugh Taylor, Templegate, Matt Chapman, Kevin Blake, Gary O\'Brien, Timeform analysts. Discuss their styles and track records honestly.\n\n'+
+'IMPORTANT:\n'+
+'- Be clear about whether analysis is from your training knowledge vs live data\n'+
+'- If you don\'t have specific runners for a race, say so and offer to analyze if the user provides them\n'+
+'- Give honest assessments — don\'t make every horse sound like a winner\n'+
+'- Include odds context where relevant\n'+
+'- When the user pastes a racecard, analyze EVERY runner\n'+
+'- Use form figure notation: 1=won, 2=second, 0=unplaced, P=pulled up, F=fell, U=unseated, R=refused, C=carried out, -=separator between seasons\n'+
+'- Rate confidence honestly: only rate horses 8+ when genuinely strong';
+
+function submitQuery(text){
+  if(inputEl)inputEl.value='';
+  addMsg(text,'user');
+  cmdHistory.push(text);
+  cmdIdx=cmdHistory.length;
+  if(cfg.apiKey){sendToClaude(text)}
+  else{addMsg('AI is not connected. Open Settings and enter your Anthropic API key to enable race analysis.','system')}
+}
+
+function sendMessage(){
+  var text=inputEl?inputEl.value.trim():'';
+  if(!text)return;
+  submitQuery(text);
+}
+
+async function sendToClaude(userText){
+  chatHistory.push({role:'user',content:userText});
+  if(chatHistory.length>40)chatHistory=chatHistory.slice(-40);
+  showTyping();
+  var fullText='';
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':cfg.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:cfg.model,max_tokens:2048,stream:true,system:SYSTEM_PROMPT,messages:chatHistory.slice(-24)})
+    });
+    if(!res.ok){
+      hideTyping();
+      var err=await res.json().catch(function(){return{}});
+      addMsg('API error: '+(err.error?err.error.message:res.status)+'. Check your API key in Settings.','system');
+      return;
+    }
+    hideTyping();
+    var stream=addStreamMsg();
+    var reader=res.body.getReader();
+    var decoder=new TextDecoder();
+    var buf='';
+    while(true){
+      var chunk=await reader.read();
+      if(chunk.done)break;
+      buf+=decoder.decode(chunk.value,{stream:true});
+      var lines=buf.split('\n');buf=lines.pop();
+      for(var i=0;i<lines.length;i++){
+        if(lines[i].startsWith('data: ')){
+          try{
+            var d=JSON.parse(lines[i].slice(6));
+            if(d.type==='content_block_delta'&&d.delta&&d.delta.text){
+              fullText+=d.delta.text;
+              stream.textEl.innerHTML=formatRacing(fullText);
+              msgsEl.scrollTop=msgsEl.scrollHeight;
+            }
+          }catch(e){}
+        }
+      }
+    }
+    stream.textEl.innerHTML=formatRacing(fullText);
+    chatHistory.push({role:'assistant',content:fullText});
+  }catch(e){
+    hideTyping();
+    addMsg('Connection error: '+e.message,'system');
+  }
+}
+
+function formatRacing(text){
+  var s=escapeHtml(text);
+  s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/^(#{1,3})\s+(.+)$/gm,function(m,h,t){
+    var sz=h.length===1?'16px':h.length===2?'14px':'13px';
+    return '<div style="font-family:var(--font-display);font-size:'+sz+';font-weight:600;margin:12px 0 6px;color:var(--text)">'+t+'</div>';
+  });
+  s=s.replace(/^(WIN|EACH-WAY|VALUE BET|DANGER|VERDICT|NAPS?):?\s*/gim,function(m){
+    var label=m.trim().replace(':','');
+    var col=label.match(/WIN|NAP/i)?'var(--gold)':'var(--accent)';
+    return '<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;padding:2px 8px;border-radius:3px;background:'+col+'22;color:'+col+';border:1px solid '+col+'44;margin-right:6px">'+label+'</span>';
+  });
+  s=s.replace(/(\d+)\.\s/g,'<span style="font-family:var(--font-mono);font-weight:600;color:var(--gold);margin-right:4px">$1.</span>');
+  s=s.replace(/\b(\d+(\.\d)?)\s*\/\s*10\b/g,'<span style="font-family:var(--font-mono);font-weight:600;color:var(--accent)">$1/10</span>');
+  s=s.replace(/Form:\s*([0-9PFURCD\-\/]+)/gi,'<span style="font-family:var(--font-mono);background:var(--surface-raised);padding:1px 6px;border-radius:3px;border:1px solid var(--border)">$1</span>');
+  s=s.replace(/\b([1-9]-[0-9PFURCD]-[0-9PFURCD](?:-[0-9PFURCD])*)\b/g,'<span style="font-family:var(--font-mono);background:var(--surface-raised);padding:1px 6px;border-radius:3px;border:1px solid var(--border)">$1</span>');
+  s=s.replace(/⚠/g,'<span style="color:var(--amber)">⚠</span>');
+  s=s.replace(/✓/g,'<span style="color:var(--green)">✓</span>');
+  s=s.replace(/\n/g,'<br>');
+  return s;
+}
+
+// ─── Setup / Settings ───
+function saveSetup(){
+  var key=$('setup-key').value.trim();
+  var model=$('setup-model').value;
+  if(key){cfg.apiKey=key;lsSet('paddock-key',key)}
+  cfg.model=model;lsSet('paddock-model',model);
+  $('setup-modal').hidden=true;
+  addMsg(key?'Claude AI connected ('+model.split('-').slice(0,3).join(' ')+').\nReady to analyze. Ask me about any race, or use the sidebar to get started.':'Running without AI. Add a key in Settings whenever you\'re ready.','system');
+}
+function skipSetup(){$('setup-modal').hidden=true}
+function saveSettings(){
+  var key=$('set-key').value.trim();
+  var model=$('set-model').value;
+  if(key){cfg.apiKey=key;lsSet('paddock-key',key)}
+  cfg.model=model;lsSet('paddock-model',model);
+  $('settings-modal').hidden=true;
+  addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.','system');
+}
+
+if(inputEl)inputEl.focus();
+document.addEventListener('keydown',function(e){if(e.key==='/'&&document.activeElement!==inputEl){e.preventDefault();if(inputEl)inputEl.focus()}});
+</script>
+</body>
+</html>
