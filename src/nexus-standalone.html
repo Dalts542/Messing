@@ -30,8 +30,8 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
 .header-controls button:hover{border-color:var(--accent);color:var(--accent)}
 .header-controls button.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 
-main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;grid-template-rows:auto auto 1fr;gap:14px;padding:14px 24px 24px;height:calc(100vh - 53px)}
-@media(max-width:900px){main{grid-template-columns:1fr;height:auto}}
+main{position:relative;z-index:1;display:grid;grid-template-columns:minmax(280px,380px) 1fr;grid-template-rows:auto auto 1fr;gap:14px;padding:14px 24px 24px;height:calc(100vh - 53px);min-height:0}
+@media(max-width:900px){main{grid-template-columns:1fr;grid-template-rows:auto auto auto minmax(350px,1fr);height:auto}}
 
 /* Cards */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;backdrop-filter:blur(8px)}
@@ -70,8 +70,8 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;gr
 .news-tag{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:3px;background:rgba(6,182,212,0.15);color:var(--accent)}
 
 /* AI Panel */
-#ai-card{grid-column:2;grid-row:1/4;display:flex;flex-direction:column;overflow:hidden}
-@media(max-width:900px){#ai-card{grid-column:1;grid-row:4;min-height:400px}}
+#ai-card{grid-column:2;grid-row:1/4;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+@media(max-width:900px){#ai-card{grid-column:1;grid-row:4;min-height:350px}}
 #ai-messages{flex:1;overflow-y:auto;padding:4px 0;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
 .ai-msg{font-size:13px;line-height:1.6;padding:10px 14px;border-radius:8px;max-width:92%;white-space:pre-wrap;word-wrap:break-word}
 .ai-msg.system{background:var(--surface-raised);border:1px solid var(--border);align-self:flex-start;color:var(--text)}
@@ -199,7 +199,7 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;gr
 <script>
 // ─── State ───
 function lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
-function lsSet(k, v) { try { lsSet(k, v); } catch(e) {} }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
 var cfg = {
   apiKey: lsGet('nexus-key') || '',
   model: lsGet('nexus-model') || 'claude-sonnet-4-20250514',
@@ -224,18 +224,30 @@ var stocks = [
   { sym: 'NDX', name: 'Nasdaq 100', price: 19872.50, base: 19872.50, change: 0, history: [], prefix: '', drift: 20, live: false },
 ];
 
+// ─── Event Listeners (attached FIRST so buttons always work) ───
+function $(id) { return document.getElementById(id); }
+function listen(id, fn) { var el = $(id); if (el) el.addEventListener('click', fn); }
+listen('btn-save-setup', function() { saveSetup(); });
+listen('btn-skip-setup', function() { skipSetup(); });
+listen('btn-save-settings', function() { saveSettings(); });
+listen('btn-close-settings', function() { closeSettings(); });
+listen('btn-voice', function() { toggleVoice(); });
+listen('btn-settings', function() { openSettings(); });
+listen('btn-mic', function() { toggleMic(); });
+listen('btn-send', function() { sendMessage(); });
+
 // ─── Init ───
-if (!cfg.apiKey) document.getElementById('setup-modal').hidden = false;
-updateVoiceBtn();
-startClock();
-renderNews();
-renderMarkets();
-fetchWeather();
-fetchCrypto();
-startMarketSim();
-bootSequence();
-setInterval(fetchWeather, 300000);
-setInterval(fetchCrypto, 60000);
+try { if (!cfg.apiKey) $('setup-modal').hidden = false; } catch(e) {}
+try { updateVoiceBtn(); } catch(e) {}
+try { startClock(); } catch(e) {}
+try { renderNews(); } catch(e) {}
+try { renderMarkets(); } catch(e) {}
+try { fetchWeather(); } catch(e) {}
+try { fetchCrypto(); } catch(e) {}
+try { startMarketSim(); } catch(e) {}
+try { bootSequence(); } catch(e) {}
+setInterval(function() { try { fetchWeather(); } catch(e) {} }, 300000);
+setInterval(function() { try { fetchCrypto(); } catch(e) {} }, 60000);
 
 // ─── Clock ───
 function startClock() {
@@ -515,12 +527,11 @@ function sendMessage() {
   }
 }
 
-inputEl.addEventListener('keydown', function(e) {
+if (inputEl) inputEl.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { sendMessage(); return; }
   if (e.key === 'ArrowUp') { e.preventDefault(); if (cmdIdx > 0) { cmdIdx--; inputEl.value = cmdHistory[cmdIdx]; } }
   if (e.key === 'ArrowDown') { e.preventDefault(); if (cmdIdx < cmdHistory.length - 1) { cmdIdx++; inputEl.value = cmdHistory[cmdIdx]; } else { cmdIdx = cmdHistory.length; inputEl.value = ''; } }
 });
-document.getElementById('btn-send').addEventListener('click', sendMessage);
 
 // ─── Voice ───
 var recognition = null;
@@ -572,6 +583,7 @@ function toggleVoice() {
 
 function updateVoiceBtn() {
   var btn = document.getElementById('btn-voice');
+  if (!btn) return;
   btn.textContent = cfg.voice ? 'VOICE ON' : 'VOICE OFF';
   if (cfg.voice) btn.classList.add('active'); else btn.classList.remove('active');
 }
@@ -657,18 +669,10 @@ function bootSequence() {
   }, totalDelay);
 }
 
-// ─── Event Listeners (no inline onclick — works in all security contexts) ───
-document.getElementById('btn-save-setup').addEventListener('click', saveSetup);
-document.getElementById('btn-skip-setup').addEventListener('click', skipSetup);
-document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
-document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
-document.getElementById('btn-voice').addEventListener('click', toggleVoice);
-document.getElementById('btn-settings').addEventListener('click', openSettings);
-document.getElementById('btn-mic').addEventListener('click', toggleMic);
-document.getElementById('btn-send').addEventListener('click', sendMessage);
-inputEl.focus();
+// ─── Keyboard shortcuts ───
+if (inputEl) inputEl.focus();
 document.addEventListener('keydown', function(e) {
-  if (e.key === '/' && document.activeElement !== inputEl) { e.preventDefault(); inputEl.focus(); }
+  if (e.key === '/' && document.activeElement !== inputEl) { e.preventDefault(); if (inputEl) inputEl.focus(); }
 });
 </script>
 </body>
