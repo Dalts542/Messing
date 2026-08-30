@@ -298,8 +298,7 @@ function submitQuery(text){
   addMsg(text,'user');
   cmdHistory.push(text);
   cmdIdx=cmdHistory.length;
-  if(cfg.apiKey){sendToClaude(text)}
-  else{addMsg('AI is not connected. Open Settings and enter your Anthropic API key to enable race analysis.','system')}
+  addMsg('AI analysis is disabled.','system')
 }
 
 function sendMessage(){
