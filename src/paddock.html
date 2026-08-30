@@ -90,9 +90,9 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
   <input type="password" id="setup-key" placeholder="sk-ant-...">
   <label>MODEL</label>
   <select id="setup-model">
-    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (recommended)</option>
+    <option value="claude-sonnet-5">Claude Sonnet 5 (recommended)</option>
     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster)</option>
-    <option value="claude-opus-4-20250514">Claude Opus 4 (deepest analysis)</option>
+    <option value="claude-opus-5">Claude Opus 5 (deepest analysis)</option>
   </select>
   <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:14px">
     <label>RACING API <span style="color:var(--gold)">(LIVE RACECARDS)</span></label>
@@ -124,9 +124,9 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
   <input type="password" id="set-key" placeholder="sk-ant-...">
   <label>MODEL</label>
   <select id="set-model">
-    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+    <option value="claude-sonnet-5">Claude Sonnet 5</option>
     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-    <option value="claude-opus-4-20250514">Claude Opus 4</option>
+    <option value="claude-opus-5">Claude Opus 5</option>
   </select>
   <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:14px">
     <label>RACING API</label>
@@ -187,7 +187,7 @@ function listen(id,fn){var el=$(id);if(el)el.addEventListener('click',fn)}
 
 var cfg={
   apiKey:lsGet('paddock-key')||lsGet('nexus-api-key')||'',
-  model:lsGet('paddock-model')||'claude-sonnet-4-20250514',
+  model:lsGet('paddock-model')||'claude-sonnet-5',
   racingUser:lsGet('paddock-race-user')||'',
   racingPass:lsGet('paddock-race-pass')||'',
   proxyUrl:lsGet('paddock-proxy')||'https://racingv2.ollie-dalton.workers.dev'
