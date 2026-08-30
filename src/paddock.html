@@ -249,7 +249,7 @@ if(inputEl){
 if((lsGet('paddock-proxy')||'').indexOf('dawn-darkness')!==-1){lsSet('paddock-proxy','');cfg.proxyUrl='https://racingv2.ollie-dalton.workers.dev'}
 try{if(!cfg.apiKey&&!cfg.racingUser)$('setup-modal').hidden=false}catch(e){}
 try{bootSequence()}catch(e){}
-if(cfg.proxyUrl)setTimeout(autoFetchRaces,500);
+if(cfg.proxyUrl&&cfg.racingUser&&cfg.racingPass)setTimeout(autoFetchRaces,500);
 
 function bootSequence(){
   addMsg('Welcome to Paddock Intelligence — your AI racing analyst.\n\n• Analyze any race (e.g. "Cheltenham 2:30")\n• Rank horses 1-10 with form ratings\n• WIN / EACH-WAY / VALUE BET verdicts\n• Paste a racecard for full breakdown\n\nUse the sidebar or ask anything about racing.'+(cfg.apiKey?'':'\n\n⚠ No API key — open Settings to connect Claude AI.'),'system');
@@ -409,42 +409,36 @@ function saveSettings(){
   addMsg('Settings saved. Model: '+model.split('-').slice(0,3).join(' ')+'.'+(ru&&rp?' Racing API connected.':'')+(px?' Proxy: '+px:''),'system');
 }
 
-// ─── Fetch racecards — API then free scraping fallback ───
-function pk(o){for(var k in o){var v=o[k];if(Array.isArray(v)&&v.length&&(v[0].course||v[0].courseName||v[0].runners||v[0].horses))return v;if(v&&typeof v==='object'&&!Array.isArray(v)){var r=pk(v);if(r)return r}}return null}
-function norm(r){
-  var run=(r.runners||r.horses||r.entries||[]).map(function(h){return{horse:h.horse||h.horseName||h.name||'',jockey:h.jockey||h.jockeyName||'',trainer:h.trainer||h.trainerName||'',form:h.form||h.formFigures||'',age:h.age||h.horseAge||'',weight:h.weight||h.weightLbs||h.wgt||'',draw:h.draw||h.stallDraw||'',official_rating:h.official_rating||h.or||h.officialRating||''}});
-  return{course:r.course||r.courseName||r.meetingName||r.venue||'',off_time:r.off_time||r.offTime||r.time||r.raceTime||r.startTime||'',race_name:r.race_name||r.raceName||r.raceTitle||r.title||r.name||'',race_class:r.race_class||r.raceClass||r.class||'',distance:r.distance||r.distanceDesc||r.dist||'',going:r.going||r.goingDesc||'',runners:run};
-}
-async function scrapeRacecards(){
-  if(!cfg.proxyUrl)return null;
-  addMsg('Scraping free racecard data...','system');
-  var urls=['https://www.racingpost.com/racecards','https://www.sportinglife.com/racing/racecards/today'];
-  for(var i=0;i<urls.length;i++){
-    var label=urls[i].split('/')[2].split('.')[1];
-    try{
-      var r=await fetch(cfg.proxyUrl+'?url='+encodeURIComponent(urls[i]),{signal:AbortSignal.timeout(20000)});
-      if(!r.ok){console.log('Paddock ['+label+'] HTTP '+r.status);continue}
-      var html=await r.text();console.log('Paddock ['+label+'] '+html.length+' bytes');
-      var m=html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-      if(m){try{var nd=JSON.parse(m[1]);var pp=nd.props&&nd.props.pageProps;if(pp){console.log('Paddock ['+label+'] pageProps: '+Object.keys(pp).join(','));var arr=pk(pp);if(arr){var out={racecards:arr.map(norm)};console.log('Paddock ['+label+'] extracted '+out.racecards.length+' races');return out}}}catch(e){console.log('Paddock ['+label+'] JSON parse: '+e.message)}}
-      var doc=new DOMParser().parseFromString(html,'text/html'),races=[];
-      doc.querySelectorAll('a[href*="/racecards/"]').forEach(function(a){var t=a.textContent.trim(),tm=t.match(/(\d{1,2}[:.]\d{2})/);if(tm)races.push({off_time:tm[1].replace('.',':'),race_name:t.replace(tm[0],'').trim(),course:'',runners:[]})});
-      if(races.length){console.log('Paddock ['+label+'] '+races.length+' races from links');return{racecards:races}}
-    }catch(e){console.log('Paddock ['+label+'] '+e.message)}
-  }
-  return null;
+// ─── Fetch racecards via Racing API (tries multiple endpoints) ───
+async function tryAPI(path,label){
+  if(!cfg.proxyUrl||!cfg.racingUser||!cfg.racingPass)return null;
+  var url='https://api.theracingapi.com'+path;
+  var purl=cfg.proxyUrl+'?url='+encodeURIComponent(url)+'&user='+encodeURIComponent(cfg.racingUser)+'&pass='+encodeURIComponent(cfg.racingPass);
+  try{
+    var r=await fetch(purl,{signal:AbortSignal.timeout(15000)});
+    var text=await r.text();
+    console.log('Paddock ['+label+'] HTTP '+r.status+' — '+text.substring(0,200));
+    if(!r.ok)return null;
+    var j=JSON.parse(text);
+    if(j.racecards&&j.racecards.length)return j;
+    if(Array.isArray(j)&&j.length&&(j[0].course||j[0].runners))return{racecards:j};
+    console.log('Paddock ['+label+'] keys: '+Object.keys(j).join(','));
+    return j;
+  }catch(e){console.log('Paddock ['+label+'] '+e.message);return null}
 }
 async function fetchRacecards(){
-  if(cfg.racingUser&&cfg.racingPass&&cfg.proxyUrl){
-    try{
-      var r=await fetch(cfg.proxyUrl+'?url='+encodeURIComponent('https://api.theracingapi.com/v1/racecards?day=today')+'&user='+encodeURIComponent(cfg.racingUser)+'&pass='+encodeURIComponent(cfg.racingPass),{signal:AbortSignal.timeout(15000)});
-      var text=await r.text();
-      if(r.ok){try{var j=JSON.parse(text);if(j.racecards)return j}catch(e){}}
-      console.log('Paddock [api] '+(text.indexOf('Basic Plan')!==-1?'Free tier — trying scraper':'HTTP '+r.status));
-    }catch(e){console.log('Paddock [api] '+e.message)}
+  var endpoints=[
+    ['/v1/racecards?day=today','racecards'],
+    ['/v1/racecards/free?day=today','racecards-free'],
+    ['/v1/races?day=today','races'],
+    ['/v1/results?day=today','results-today'],
+    ['/v1/racecards/search?day=today','racecards-search']
+  ];
+  for(var i=0;i<endpoints.length;i++){
+    var d=await tryAPI(endpoints[i][0],endpoints[i][1]);
+    if(d&&d.racecards&&d.racecards.length)return d;
   }
-  var s=await scrapeRacecards();if(s)return s;
-  throw new Error('Could not fetch racecards. Paste a racecard via Import, or upgrade Racing API to Basic Plan.');
+  throw new Error('Racing API free tier doesn\'t include racecards. Options:\n• Upgrade to Basic Plan at theracingapi.com\n• Paste racecards manually via Import (Racing Post, Sporting Life, etc.)');
 }
 
 function renderRacecards(data){
@@ -488,9 +482,9 @@ function analyzeRace(race){
 
 async function autoFetchRaces(){
   var btn=$('btn-auto-fetch');
-  if(!cfg.proxyUrl){
-    addMsg('No proxy URL set — enter your Cloudflare Worker URL in Settings to enable racecard fetching.','system');
-    if(btn)btn.textContent='NO PROXY';return}
+  if(!cfg.proxyUrl||!cfg.racingUser||!cfg.racingPass){
+    addMsg(!cfg.proxyUrl?'No proxy URL set — enter your Cloudflare Worker URL in Settings.':'Racing API credentials missing — enter your username and password in Settings.','system');
+    if(btn)btn.textContent='NOT CONFIGURED';return}
   if(btn)btn.textContent='FETCHING RACECARDS...';
   try{var data=await fetchRacecards();if(btn)btn.textContent='LOADED';$('import-modal').hidden=true;renderRacecards(data)}
   catch(e){if(btn)btn.textContent='FETCH FAILED';addMsg('Racecard error: '+e.message,'system')}
