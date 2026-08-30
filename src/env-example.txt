@@ -1,0 +1,10 @@
+# Paddock Intelligence — Local Configuration
+# Rename this file to .env and fill in your values.
+# .env is gitignored and never committed.
+
+# Racing API credentials (free at https://www.theracingapi.com)
+RACING_USER=
+RACING_PASS=
+
+# Server port (default 3000)
+PORT=3000

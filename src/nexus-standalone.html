@@ -516,15 +516,11 @@ function sendMessage() {
   cmdHistory.push(text);
   cmdIdx = cmdHistory.length;
 
-  if (cfg.apiKey) {
-    sendToClaude(text);
-  } else {
-    showTyping();
-    setTimeout(function() {
-      hideTyping();
-      addMsg('AI is not connected. Open Settings and enter your Anthropic API key to enable Claude integration. In the meantime, I can confirm your dashboard is live — weather, markets, and news are all updating.', 'system');
-    }, 800);
-  }
+  showTyping();
+  setTimeout(function() {
+    hideTyping();
+    addMsg('AI analysis is disabled. Weather, markets, and news feeds are still live and updating.', 'system');
+  }, 400);
 }
 
 if (inputEl) inputEl.addEventListener('keydown', function(e) {

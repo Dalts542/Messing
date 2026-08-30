@@ -132,8 +132,8 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
     <label>RACING API</label>
     <input type="text" id="set-race-user" placeholder="Username">
     <input type="password" id="set-race-pass" placeholder="Password">
-    <label>PROXY URL <span style="color:var(--text-dim)">(Cloudflare Worker)</span></label>
-    <input type="text" id="set-proxy" placeholder="https://your-worker.workers.dev">
+    <label>PROXY URL <span style="color:var(--text-dim)">(local server)</span></label>
+    <input type="text" id="set-proxy" placeholder="http://127.0.0.1:3000/proxy">
   </div>
   <button class="btn-primary" id="btn-save-set">SAVE</button>
   <button class="btn-secondary" id="btn-close-set">CANCEL</button>
@@ -188,7 +188,7 @@ var cfg={
   model:lsGet('paddock-model')||'claude-sonnet-5',
   racingUser:lsGet('paddock-race-user')||'',
   racingPass:lsGet('paddock-race-pass')||'',
-  proxyUrl:lsGet('paddock-proxy')||'https://racingv2.ollie-dalton.workers.dev'
+  proxyUrl:lsGet('paddock-proxy')||'http://127.0.0.1:3000/proxy'
 };
 var loadedRaces=[];
 var chatHistory=[];
@@ -230,12 +230,12 @@ if(inputEl){
 }
 
 // ─── Init ───
-if((lsGet('paddock-proxy')||'').indexOf('dawn-darkness')!==-1){lsSet('paddock-proxy','');cfg.proxyUrl='https://racingv2.ollie-dalton.workers.dev'}
+if((lsGet('paddock-proxy')||'').indexOf('dawn-darkness')!==-1){lsSet('paddock-proxy','');cfg.proxyUrl='http://127.0.0.1:3000/proxy'}
 var VALID_MODELS=['claude-sonnet-5','claude-haiku-4-5-20251001','claude-opus-5'];
 if(VALID_MODELS.indexOf(cfg.model)===-1){cfg.model='claude-sonnet-5';lsSet('paddock-model','claude-sonnet-5')}
 try{if(!cfg.apiKey&&!cfg.racingUser)$('setup-modal').hidden=false}catch(e){}
 try{bootSequence()}catch(e){}
-if(cfg.proxyUrl&&cfg.racingUser&&cfg.racingPass)setTimeout(autoFetchRaces,500);
+// Auto-fetch disabled — use Import button or sidebar to fetch manually
 
 function bootSequence(){
   addMsg('Welcome to Paddock Intelligence — your AI racing analyst.\n\n• Analyze any race (e.g. "Cheltenham 2:30")\n• Rank horses 1-10 with form ratings\n• WIN / EACH-WAY / VALUE BET verdicts\n• Paste a racecard for full breakdown\n\nUse the sidebar or ask anything about racing.'+(cfg.apiKey?'':'\n\n⚠ No API key — open Settings to connect Claude AI.'),'system');
@@ -485,7 +485,7 @@ function analyzeRace(race){
 async function autoFetchRaces(){
   var btn=$('btn-auto-fetch');
   if(!cfg.proxyUrl||!cfg.racingUser||!cfg.racingPass){
-    addMsg(!cfg.proxyUrl?'No proxy URL set — enter your Cloudflare Worker URL in Settings.':'Racing API credentials missing — enter your username and password in Settings.','system');
+    addMsg(!cfg.proxyUrl?'No proxy URL set — enter your local server URL in Settings (default: http://127.0.0.1:3000/proxy).':'Racing API credentials missing — enter your username and password in Settings.','system');
     if(btn)btn.textContent='NOT CONFIGURED';return}
   if(btn)btn.textContent='FETCHING RACECARDS...';
   try{var data=await fetchRacecards();if(btn)btn.textContent='LOADED';$('import-modal').hidden=true;renderRacecards(data)}
