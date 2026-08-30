@@ -162,12 +162,10 @@ main{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;he
     <hr class="sb-divider"><div class="sb-section"><div class="sb-title">ANALYSIS TOOLS</div>
       <button class="sb-btn" data-q="Explain how to read horse racing form figures. What do the numbers, letters (P, F, U, R, C, D) mean?">Form Guide</button>
       <button class="sb-btn" data-q="Explain UK going descriptions from Heavy through to Firm. How does going affect different types of horses?">Going Explained</button>
-      <button class="sb-btn" data-q="Who are the most reliable UK horse racing tipsters? Cover newspaper and Racing Post analysts. Rate their recent form.">Best Tipsters</button>
       <button class="sb-btn" data-q="Explain key factors when analyzing a horse race: form, class, distance, going, draw, jockey, trainer, course form, weight.">Key Factors</button>
     </div><hr class="sb-divider"><div class="sb-section"><div class="sb-title">RACECARD IMPORT</div>
       <button class="sb-btn" id="sb-import" style="background:var(--gold-dim);border-color:rgba(212,160,23,0.3);color:var(--gold)">&#9889; Auto Import Racecards</button>
-      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:4px 4px 0">Fetches racecards via proxy scraping or Racing API. Set proxy URL in Settings.</p>
-    </div>
+      <p style="font-size:11px;color:var(--text-dim);line-height:1.5;padding:4px 4px 0">Fetches racecards via Racing API. Set credentials in Settings.</p></div>
   </aside>
 
   <div id="chat-panel">
@@ -233,6 +231,8 @@ if(inputEl){
 
 // ─── Init ───
 if((lsGet('paddock-proxy')||'').indexOf('dawn-darkness')!==-1){lsSet('paddock-proxy','');cfg.proxyUrl='https://racingv2.ollie-dalton.workers.dev'}
+var VALID_MODELS=['claude-sonnet-5','claude-haiku-4-5-20251001','claude-opus-5'];
+if(VALID_MODELS.indexOf(cfg.model)===-1){cfg.model='claude-sonnet-5';lsSet('paddock-model','claude-sonnet-5')}
 try{if(!cfg.apiKey&&!cfg.racingUser)$('setup-modal').hidden=false}catch(e){}
 try{bootSequence()}catch(e){}
 if(cfg.proxyUrl&&cfg.racingUser&&cfg.racingPass)setTimeout(autoFetchRaces,500);
@@ -344,12 +344,13 @@ async function sendToClaude(userText){
               stream.textEl.innerHTML=formatRacing(fullText);
               msgsEl.scrollTop=msgsEl.scrollHeight;
             }
+            if(d.type==='error'){fullText='API error: '+(d.error?d.error.message:'unknown')+' (model: '+cfg.model+')'}
           }catch(e){}
         }
       }
     }
-    stream.textEl.innerHTML=formatRacing(fullText);
-    chatHistory.push({role:'assistant',content:fullText});
+    if(!fullText){stream.el.remove();addMsg('No response from Claude. Model: '+cfg.model+'. Check your API key and model in Settings.','system')}
+    else{stream.textEl.innerHTML=formatRacing(fullText);chatHistory.push({role:'assistant',content:fullText})}
   }catch(e){
     hideTyping();
     addMsg('Connection error: '+e.message,'system');
