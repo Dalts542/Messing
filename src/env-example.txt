@@ -8,3 +8,8 @@ RACING_PASS=
 
 # Server port (default 3000)
 PORT=3000
+
+# Ollama AI settings (local, free)
+# Install from https://ollama.com then: ollama pull llama3.1:8b
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.1:8b

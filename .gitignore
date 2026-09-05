@@ -24,3 +24,4 @@ node_modules/
 .claude-flow/metrics/test-gaps.json
 .claude-flow/metrics/harness-loop.json
 ruvector.db
+data/
