@@ -24,11 +24,12 @@ const LOG_FILE = path.join(DATA_DIR, 'startup.log');
 
 const HOST = '127.0.0.1';
 const PORT = parseInt(process.env.PORT || '3000', 10);
-const OPEN_PATH = process.env.OPEN_PATH || '/paddock.html';
+// Paddock V2 (index.html) is the application. '/' serves it.
+const OPEN_PATH = process.env.OPEN_PATH || '/';
 
 const REQUIRED_FILES = [
   'src/server.js', 'src/db.js', 'src/sources.js', 'src/analytics.js', 'src/ai.js',
-  'src/index.html', 'src/paddock.html', 'src/nexus-standalone.html', 'src/bet-tracker.html'
+  'src/index.html', 'src/nexus-standalone.html', 'src/bet-tracker.html'
 ];
 
 let logStream = null;
@@ -143,7 +144,7 @@ function removePidFile() {
 // --- main -------------------------------------------------------------------
 
 async function main() {
-  const TOTAL = 6;
+  const TOTAL = 7;
   log('');
   log('Paddock Intelligence v2');
   log('=======================');
@@ -190,7 +191,7 @@ async function main() {
   const existing = await probeHealth();
   if (existing.ok) {
     log('      Paddock Intelligence is already running on port ' + PORT + '.');
-    log('      Opening the existing dashboard instead of starting a second copy.');
+    log('      Opening the existing Paddock V2 instead of starting a second copy.');
     openBrowser('http://' + HOST + ':' + PORT + OPEN_PATH);
     log('');
     log('  http://' + HOST + ':' + PORT + OPEN_PATH);
@@ -243,10 +244,26 @@ async function main() {
     ]);
   }
   log('      /health OK'
-    + (healthy.body ? '  (AI: ' + (healthy.body.ai ? 'online' : 'offline')
-      + ', racing data: ' + (healthy.body.racing_configured ? 'configured' : 'not configured') + ')' : ''));
+    + (healthy.body ? '  (racing data: '
+      + (healthy.body.racing_configured ? 'configured' : 'not configured') + ')' : ''));
 
   writePidFile();
+
+  // 6. Ollama / local AI. Never fatal - the dashboard loads either way.
+  stage(6, TOTAL, 'Checking Ollama / local AI');
+  try {
+    const ai = require('./ai');
+    const st = ai.getAiStatus();
+    if (st.status === 'READY' && st.testPassed) {
+      log('      AI READY - ' + st.model + ' via ' + st.endpoint + ' (tested)');
+    } else {
+      log('      AI ' + st.status + ' - ' + (st.headline || 'unavailable'));
+      if (st.action) log('      ' + st.action);
+      log('      Paddock V2 will still load; only AI answers are unavailable.');
+    }
+  } catch (e) {
+    log('      AI check unavailable (' + e.message + '). Continuing.');
+  }
 
   // Once the site is up and healthy, a late non-fatal error (a failed browser
   // launch, a background data refresh blowing up) must not take the site down.
@@ -261,13 +278,12 @@ async function main() {
     log('The server is still running.');
   });
 
-  // 6. Open the dashboard
-  stage(6, TOTAL, 'Opening dashboard');
+  // 7. Open Paddock V2
+  stage(7, TOTAL, 'Opening Paddock V2');
   openBrowser('http://' + HOST + ':' + PORT + OPEN_PATH);
 
   log('');
-  log('  Paddock:     http://' + HOST + ':' + PORT + '/paddock.html');
-  log('  Dashboard:   http://' + HOST + ':' + PORT + '/');
+  log('  Paddock V2:  http://' + HOST + ':' + PORT + '/');
   log('  NEXUS:       http://' + HOST + ':' + PORT + '/nexus-standalone.html');
   log('  Bet Tracker: http://' + HOST + ':' + PORT + '/bet-tracker.html');
   log('');

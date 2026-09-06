@@ -29,15 +29,16 @@ downloaded script and is not a problem with the app.
 You'll see each stage as it happens:
 
 ```
-[1/6] Checking Node.js
-[2/6] Checking project files
-[3/6] Checking for an existing instance
-[4/6] Initialising database and starting server
-[5/6] Waiting for health check
-[6/6] Opening dashboard
+[1/7] Checking Node.js
+[2/7] Checking project files
+[3/7] Checking for an existing instance
+[4/7] Initialising database and starting server
+[5/7] Waiting for health check
+[6/7] Checking Ollama / local AI
+[7/7] Opening Paddock V2
 ```
 
-**5. The dashboard opens automatically** once the health check passes.
+**5. Paddock V2 opens automatically** once the health check passes.
 
 **6. Double-click `stop.bat`** when you want to stop it.
 
@@ -48,11 +49,14 @@ the app — closing it stops the server.
 
 | Page | URL |
 | --- | --- |
-| Paddock | <http://127.0.0.1:3000/paddock.html> |
-| Dashboard | <http://127.0.0.1:3000/> |
+| **Paddock V2** (the app) | <http://127.0.0.1:3000/> |
 | NEXUS | <http://127.0.0.1:3000/nexus-standalone.html> |
 | Bet Tracker | <http://127.0.0.1:3000/bet-tracker.html> |
 | Health check | <http://127.0.0.1:3000/health> |
+| AI diagnostics | <http://127.0.0.1:3000/api/ai/diagnose> |
+
+Paddock V2 is the only Paddock interface. The original one has been removed;
+`/paddock` and `/paddock.html` redirect to `/`.
 
 The server binds to `127.0.0.1` only, so it is not reachable from other
 machines on your network.
@@ -83,8 +87,32 @@ Install [Ollama](https://ollama.com) (free), then in a terminal run:
 ollama pull llama3.1:8b
 ```
 
-Restart the app. If Ollama isn't installed the AI panel says it's offline
-and everything else carries on working.
+The app finds Ollama by itself. On startup it tries `127.0.0.1`, then `::1`,
+then `localhost`, and will start Ollama for you if it is installed but not
+running. It then sends a real test prompt, so "READY" means the AI genuinely
+answered - not merely that Ollama exists.
+
+**Do not set `OLLAMA_HOST` to `http://localhost:11434`.** On Windows,
+`localhost` resolves to the IPv6 address `::1` first, while Ollama listens on
+`127.0.0.1` only. Pinning it to `localhost` makes the AI look permanently
+offline. Leave it unset unless Ollama is on a different port or machine.
+
+The **AI Assistant** and **Data Status** screens show exactly what is wrong
+when the AI is unavailable, and offer the matching action:
+
+| Status | Meaning |
+| --- | --- |
+| `READY` | Ollama is running, the model is present, and a test prompt succeeded |
+| `NOT_INSTALLED` | Ollama could not be found on this PC |
+| `NOT_RUNNING` | Ollama is installed but nothing is listening on port 11434 |
+| `UNREACHABLE` | Something is blocking the local connection |
+| `NO_MODELS` | Ollama works but has no models - a download button is offered |
+| `MODEL_MISSING` | Ollama works but `llama3.1:8b` is absent - shows what you do have |
+| `MODEL_LOAD_FAILED` | The model exists but could not be loaded |
+| `API_ERROR` / `TIMEOUT` | Ollama returned an error, or did not answer in time |
+
+If the AI is unavailable the racing dashboard still loads in full - only AI
+answers are affected.
 
 ---
 
@@ -135,8 +163,16 @@ npm test               # run the test suite
 npm test
 ```
 
-Covers batch launcher linting (a regression guard for the startup bug where
-an unescaped `)` inside an `echo` closed an `if` block early and made
-`start.bat` exit before running the server), server startup, the health
-endpoint, every page, API degradation with no credentials, port-conflict
-handling, and the start/stop/restart lifecycle.
+Four suites, no dependencies:
+
+- **batch lint** - guards the startup bug where an unescaped `)` inside an
+  `echo` closed an `if` block early and made `start.bat` exit before running
+  the server.
+- **smoke** - server startup, health endpoint, Paddock V2 routing, legacy
+  redirects, every page, API degradation with no credentials, port conflicts.
+- **ai** - every Ollama state (missing, stopped, no models, wrong model,
+  timeout, API error, empty reply), model pulling, and the complete
+  Paddock V2 -> Node -> Ollama -> model -> streamed response chain against a
+  mock Ollama, including the IPv4-only regression.
+- **launcher** - start/stop/restart, duplicate-launch detection, and surviving
+  a failed browser launch.

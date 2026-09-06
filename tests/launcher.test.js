@@ -19,6 +19,8 @@ const LAUNCHER = path.join(ROOT, 'src', 'launcher.js');
 const STOPPER = path.join(ROOT, 'src', 'stop.js');
 const PID_FILE = path.join(ROOT, 'data', 'paddock.pid');
 const PORT = parseInt(process.env.TEST_PORT || '3011', 10);
+// The launcher's default landing path must be Paddock V2.
+const LAUNCHER_OPEN = require.resolve('./open-path.js');
 const HOST = '127.0.0.1';
 
 const results = [];
@@ -109,9 +111,11 @@ async function main() {
     rec ? 'pid ' + rec.pid : 'unreadable');
 
   // --- pages ----------------------------------------------------------------
-  for (const p of ['/paddock.html', '/nexus-standalone.html', '/bet-tracker.html', '/']) {
+  for (const p of ['/', '/index.html', '/nexus-standalone.html', '/bet-tracker.html']) {
     record('serves ' + p, (await status(p)) === 200);
   }
+  record('launcher opens Paddock V2 at "/"', require(LAUNCHER_OPEN) === '/');
+  record('/paddock.html redirects to V2', (await status('/paddock.html')) === 302);
 
   // --- second launcher must NOT start a duplicate ---------------------------
   const dup = spawnSync(process.execPath, [LAUNCHER], {

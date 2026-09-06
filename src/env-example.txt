@@ -11,5 +11,20 @@ PORT=3000
 
 # Ollama AI settings (local, free)
 # Install from https://ollama.com then: ollama pull llama3.1:8b
-OLLAMA_HOST=http://localhost:11434
+
+# Which model to use.
 OLLAMA_MODEL=llama3.1:8b
+
+# OLLAMA_HOST is deliberately NOT set.
+#
+# Leave it commented out and the app tries 127.0.0.1, then ::1, then localhost,
+# and remembers whichever answers. That matters on Windows: "localhost" there
+# resolves to the IPv6 address ::1 first, while Ollama listens on 127.0.0.1
+# only - so pinning this to localhost makes the AI look permanently offline.
+#
+# Only set this if Ollama runs on a non-default port or another machine, and
+# prefer a numeric address over a name:
+# OLLAMA_HOST=http://127.0.0.1:11434
+
+# Set to 0 to stop the app trying to start Ollama for you.
+# OLLAMA_AUTOSTART=1

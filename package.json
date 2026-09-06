@@ -13,6 +13,8 @@
     "stop": "node src/stop.js",
     "test": "node tests/run-all.js",
     "test:smoke": "node tests/smoke.test.js",
-    "test:batch": "node tests/batch-lint.test.js"
+    "test:batch": "node tests/batch-lint.test.js",
+    "test:ai": "node tests/ai.test.js",
+    "test:launcher": "node tests/launcher.test.js"
   }
 }

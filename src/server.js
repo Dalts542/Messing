@@ -68,6 +68,9 @@ const MIME = {
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
 
+// Routes from the retired original Paddock interface. All redirect to V2.
+const LEGACY_PADDOCK_ROUTES = new Set(['/paddock', '/paddock.html', '/paddock-v1', '/paddock-v1.html']);
+
 function json(res, data, status = 200) {
   res.writeHead(status, { 'Content-Type': 'application/json', ...CORS });
   res.end(JSON.stringify(data));
@@ -194,8 +197,35 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/ai-status') {
-      const status = await ai.checkOllama();
+      await ai.checkOllama();
+      return json(res, ai.getAiStatus());
+    }
+
+    // Full diagnostic: detect -> optionally start -> models -> real test prompt.
+    if (p === '/api/ai/diagnose') {
+      const status = await ai.diagnose({
+        autoStart: parsed.query.autostart !== '0',
+        test: parsed.query.test !== '0'
+      });
       return json(res, status);
+    }
+
+    // Proves the whole chain by sending a real prompt to the model.
+    if (p === '/api/ai/test') {
+      const result = await ai.selfTest();
+      return json(res, { ...result, status: ai.getAiStatus() });
+    }
+
+    // Download the model. Returns immediately; poll /api/ai-status for progress.
+    if (p === '/api/ai/pull' && req.method === 'POST') {
+      let model = null;
+      try { const b = await readBody(req); model = b.model || null; } catch { /* optional body */ }
+      const current = ai.getAiStatus();
+      if (current.pull && current.pull.active) {
+        return json(res, { ok: false, error: 'A download is already in progress', pull: current.pull });
+      }
+      ai.pullModel(model).catch(() => { /* progress is reported via status */ });
+      return json(res, { ok: true, started: true, model: model || current.wanted });
     }
 
     if (p === '/proxy') {
@@ -211,6 +241,14 @@ const server = http.createServer(async (req, res) => {
     if (p === '/health') {
       const aiStatus = ai.getAiStatus();
       return json(res, { status: 'ok', racing_configured: !!(RACING_USER && RACING_PASS), ai: aiStatus.online, model: aiStatus.model });
+    }
+
+    // Paddock V2 (index.html) is the only Paddock UI. The original interface
+    // has been removed; these routes exist so old bookmarks, shortcuts and
+    // browser refreshes land on V2 instead of 404ing.
+    if (LEGACY_PADDOCK_ROUTES.has(p.toLowerCase())) {
+      res.writeHead(302, { Location: '/', ...CORS });
+      return res.end();
     }
 
     let file = p === '/' ? 'index.html' : p.slice(1);
@@ -242,17 +280,21 @@ function listen(port = PORT, host = HOST) {
 // Optional subsystems. Neither Ollama nor the racing data provider may prevent
 // the core website from starting — both degrade to a status message.
 async function startOptionalSubsystems() {
-  let aiStatus = { online: false, model: null };
+  // Full AI diagnostic, including a real prompt sent to the model. Every branch
+  // is non-fatal: the racing dashboard must come up regardless.
+  let aiStatus = { online: false, model: null, headline: 'AI check did not run' };
   try {
-    aiStatus = await ai.checkOllama();
+    aiStatus = await ai.diagnose({ autoStart: true, test: true });
   } catch (e) {
-    console.log('  [ai] Ollama check failed (non-fatal): ' + e.message);
+    console.log('  [AI] Diagnostic failed (non-fatal): ' + e.message);
   }
-  if (aiStatus.online) {
-    console.log('  AI: ONLINE - ' + aiStatus.model + ' (free, runs locally)');
+  if (aiStatus.online && aiStatus.testPassed) {
+    console.log('  AI: READY - ' + aiStatus.model + ' via ' + aiStatus.endpoint + ' (free, runs locally)');
   } else {
-    console.log('  AI: OFFLINE - the dashboard still works. To enable AI:');
-    console.log('       install Ollama from https://ollama.com, then: ollama pull llama3.1:8b');
+    console.log('  AI: ' + (aiStatus.status || 'UNAVAILABLE') + ' - ' + (aiStatus.headline || ''));
+    if (aiStatus.detail) console.log('      ' + aiStatus.detail);
+    if (aiStatus.action) console.log('      ' + aiStatus.action);
+    console.log('      The racing dashboard is unaffected and will still load.');
   }
 
   if (RACING_USER && RACING_PASS) {
@@ -271,7 +313,7 @@ async function startOptionalSubsystems() {
     console.log('  [sources] Background refresh could not start (non-fatal): ' + e.message);
   }
   try {
-    aiPollTimer = setInterval(() => { ai.checkOllama().catch(() => {}); }, 30000);
+    aiPollTimer = setInterval(() => { ai.checkOllama({ autoStart: false }).catch(() => {}); }, 30000);
     if (aiPollTimer.unref) aiPollTimer.unref();
   } catch { /* non-fatal */ }
 }
@@ -288,8 +330,7 @@ async function startup({ quiet = false } = {}) {
   const addr = await listen();
 
   if (!quiet) {
-    console.log('  Dashboard:      http://' + HOST + ':' + PORT + '/');
-    console.log('  Paddock:        http://' + HOST + ':' + PORT + '/paddock.html');
+    console.log('  Paddock V2:     http://' + HOST + ':' + PORT + '/');
     console.log('  NEXUS:          http://' + HOST + ':' + PORT + '/nexus-standalone.html');
     console.log('  Bet Tracker:    http://' + HOST + ':' + PORT + '/bet-tracker.html');
     console.log('  Health:         http://' + HOST + ':' + PORT + '/health');

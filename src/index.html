@@ -257,7 +257,9 @@ async function loadDashboard() {
 function updateStatusDots() {
   const ai = state.aiStatus;
   $('#aiDot').className = 'status-dot ' + (ai && ai.online ? 'on' : 'off');
-  $('#aiLabel').textContent = ai && ai.online ? ai.model || 'AI' : 'AI OFF';
+  $('#aiLabel').textContent = ai && ai.online ? (ai.model || 'AI') : aiShortLabel(ai);
+  const dot = $('#aiDot');
+  if (dot) dot.title = ai && ai.headline ? ai.headline : '';
   const d = state.data;
   const hasData = d && d.total_meetings > 0;
   $('#dataDot').className = 'status-dot ' + (hasData ? 'on' : 'off');
@@ -333,11 +335,14 @@ function renderToday(el) {
     ${d.total_meetings === 0 ? '<div class="loading-msg">No meetings found for today. Click "Refresh Now" to fetch data, or check Data Status.</div>' : ''}
     ${d.ai ? `<div class="card" style="margin-top:18px">
       <div class="card-header"><div class="card-title">AI Status</div>
-        <span class="badge ${d.ai.online ? 'badge-green' : 'badge-red'}">${d.ai.online ? 'ONLINE' : 'OFFLINE'}</span>
+        ${aiBadge(d.ai)}
       </div>
-      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mid)">
-        ${d.ai.online ? 'Model: ' + esc(d.ai.model || '?') + ' &mdash; Cost: ' + esc(d.ai.cost || '£0') : 'Install Ollama from <a href="https://ollama.com" style="color:var(--accent)">ollama.com</a> then run: ollama pull llama3.1:8b'}
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mid);line-height:1.7">
+        <strong style="color:var(--text)">${esc(d.ai.headline || '')}</strong><br>
+        ${esc(d.ai.detail || '')}
+        ${d.ai.action ? '<br><span style="color:var(--gold)">' + esc(d.ai.action) + '</span>' : ''}
       </div>
+      <div style="margin-top:10px">${aiActionButtons(d.ai)}</div>
     </div>` : ''}
   `;
 }
@@ -602,6 +607,136 @@ function lookupJockey(name) {
   setTimeout(() => { $('#lookupInput').value = name; doLookup('jockeys'); }, 50);
 }
 
+// ---------------------------------------------------------------------------
+// AI DIAGNOSTICS
+// The backend returns a specific status rather than a bare "offline" flag, so
+// the UI can say what is actually wrong and offer the matching action.
+// ---------------------------------------------------------------------------
+const AI_LABELS = {
+  READY:             ['badge-green', 'READY'],
+  NOT_INSTALLED:     ['badge-red',   'NOT INSTALLED'],
+  NOT_RUNNING:       ['badge-gold',  'NOT RUNNING'],
+  UNREACHABLE:       ['badge-red',   'UNREACHABLE'],
+  NO_MODELS:         ['badge-gold',  'NO MODELS'],
+  MODEL_MISSING:     ['badge-gold',  'MODEL MISSING'],
+  MODEL_DOWNLOADING: ['badge-gold',  'DOWNLOADING'],
+  MODEL_LOAD_FAILED: ['badge-red',   'LOAD FAILED'],
+  API_ERROR:         ['badge-red',   'API ERROR'],
+  TIMEOUT:           ['badge-gold',  'TIMED OUT'],
+  UNKNOWN:           ['badge-dim',   'CHECKING']
+};
+
+function aiReady() { return !!(state.aiStatus && state.aiStatus.status === 'READY'); }
+
+function aiShortLabel(ai) {
+  if (!ai) return 'AI';
+  return (AI_LABELS[ai.status] || AI_LABELS.UNKNOWN)[1];
+}
+
+function aiBadge(ai) {
+  const [cls, label] = AI_LABELS[ai && ai.status] || AI_LABELS.UNKNOWN;
+  const tested = ai && ai.testPassed ? ' <span class="badge badge-green">TESTED</span>' : '';
+  return '<span class="badge ' + cls + '">' + label + '</span>' + tested;
+}
+
+function aiActionButtons(ai) {
+  if (!ai) return '';
+  const b = ['<button class="btn" onclick="aiRecheck()">Re-check</button>'];
+  if (ai.canPull) {
+    b.push('<button class="btn btn-accent" onclick="aiPull()">Download ' + esc(ai.wanted || 'model') + '</button>');
+  }
+  if (ai.status === 'READY') {
+    b.push('<button class="btn" onclick="aiTest()">Test AI</button>');
+  }
+  if (ai.status === 'NOT_INSTALLED') {
+    b.push('<a class="btn" style="text-decoration:none" href="https://ollama.com" target="_blank" rel="noopener">Get Ollama</a>');
+  }
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap">' + b.join('') + '</div>';
+}
+
+// The opening panel of the AI chat: a real diagnosis, not a generic message.
+function aiOpeningPanel() {
+  const ai = state.aiStatus;
+  if (!ai) return '<div class="msg system"><span class="msg-label">PADDOCK INTELLIGENCE AI</span>Checking local AI...</div>';
+
+  if (ai.status === 'READY') {
+    return '<div class="msg system"><span class="msg-label">PADDOCK INTELLIGENCE AI</span>' +
+      'Local AI is ready. Ask me about today’s racing — meetings, runners, form analysis, trainer stats, or anything in the database.\n\n' +
+      'Model: ' + esc(ai.model || '?') + '\nEngine: ' + esc(ai.endpoint || 'Ollama') +
+      '\nConnectivity test: ' + (ai.testPassed ? 'passed' : 'not run yet') +
+      '\nCost: £0 per query — everything runs on this PC.' +
+      '</div>';
+  }
+
+  const pull = ai.pull && ai.pull.active
+    ? '\n\nDownloading ' + esc(ai.pull.model || '') + ': ' + (ai.pull.percent || 0) + '%  ' + esc(ai.pull.status || '')
+    : '';
+
+  return '<div class="msg system" style="max-width:100%">' +
+    '<span class="msg-label">LOCAL AI STATUS</span>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' + aiBadge(ai) + '</div>' +
+    '<strong style="font-size:14px">' + esc(ai.headline || 'Local AI unavailable') + '</strong>\n' +
+    esc(ai.detail || '') +
+    (ai.action ? '\n\n<span style="color:var(--gold)">' + esc(ai.action) + '</span>' : '') +
+    pull +
+    '\n\n<span style="color:var(--text-dim);font-size:11px">The racing dashboard is unaffected — only AI answers are unavailable.</span>' +
+    '\n' + aiActionButtons(ai) +
+    '</div>';
+}
+
+async function aiRecheck() {
+  const el = $('#mainContent');
+  state.aiStatus = { status: 'UNKNOWN', headline: 'Re-checking local AI...', detail: '' };
+  if (state.view === 'ai') renderAI(el);
+  try {
+    state.aiStatus = await api('/api/ai/diagnose');
+  } catch (e) {
+    state.aiStatus = { status: 'UNREACHABLE', headline: 'Could not reach the server', detail: String(e.message || e) };
+  }
+  updateStatusDots();
+  render();
+}
+
+async function aiTest() {
+  const prev = state.aiStatus;
+  state.aiStatus = { ...prev, headline: 'Sending a test prompt to the model...', detail: 'This can take up to a minute the first time.' };
+  if (state.view === 'ai') renderAI($('#mainContent'));
+  try {
+    const r = await api('/api/ai/test');
+    state.aiStatus = r.status || prev;
+    alert(r.ok ? 'AI test passed in ' + r.ms + 'ms.\n\nModel replied: "' + (r.reply || '') + '"'
+               : 'AI test failed: ' + (r.error || 'unknown error'));
+  } catch (e) {
+    alert('AI test failed: ' + e.message);
+  }
+  updateStatusDots();
+  render();
+}
+
+async function aiPull() {
+  const ai = state.aiStatus || {};
+  if (!confirm('Download ' + (ai.wanted || 'the model') + '?\n\nThis is roughly 4.7 GB and happens once.')) return;
+  try {
+    await fetch('/api/ai/pull', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: ai.wanted })
+    });
+  } catch (e) {
+    alert('Could not start the download: ' + e.message);
+    return;
+  }
+  // Poll progress until the download finishes.
+  const poll = setInterval(async () => {
+    try {
+      const st = await api('/api/ai-status');
+      state.aiStatus = st;
+      updateStatusDots();
+      if (state.view === 'ai' || state.view === 'status' || state.view === 'today') render();
+      if (!st.pull || !st.pull.active) { clearInterval(poll); aiRecheck(); }
+    } catch { clearInterval(poll); }
+  }, 1500);
+}
+
 // AI CHAT
 let chatMessages = [];
 let chatStreaming = false;
@@ -611,14 +746,7 @@ function renderAI(el) {
     <div class="section-title">AI Assistant</div>
     <div class="chat-container">
       <div class="chat-messages" id="chatMsgs">
-        ${chatMessages.length === 0 ? `
-          <div class="msg system">
-            <span class="msg-label">PADDOCK INTELLIGENCE AI</span>
-            ${state.aiStatus && state.aiStatus.online
-              ? 'Local AI is ready. Ask me about today\'s racing — meetings, runners, form analysis, trainer stats, or anything in the database.\n\nModel: ' + esc(state.aiStatus.model || '?') + ' | Cost: £0 per query'
-              : 'Local AI is offline.\n\nInstall Ollama (free) from https://ollama.com\nThen run: ollama pull llama3.1:8b\nRestart the server afterwards.'}
-          </div>
-        ` : chatMessages.map(m => `
+        ${chatMessages.length === 0 ? aiOpeningPanel() : chatMessages.map(m => `
           <div class="msg ${m.role === 'user' ? 'user' : 'system'}">
             <span class="msg-label">${m.role === 'user' ? 'YOU' : 'AI'}</span>
             ${esc(m.content)}
@@ -626,7 +754,8 @@ function renderAI(el) {
         `).join('')}
       </div>
       <div class="chat-input-area">
-        <textarea class="chat-input" id="chatInput" placeholder="Ask about today's racing..." rows="1"
+        <textarea class="chat-input" id="chatInput" rows="1"
+          placeholder="${aiReady() ? "Ask about today's racing..." : 'AI unavailable - see the status above'}"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
         <button class="chat-send" id="chatSendBtn" onclick="sendChat()">SEND</button>
       </div>
@@ -714,12 +843,25 @@ async function renderStatus(el) {
       <div class="card">
         <div class="card-header">
           <div class="card-title">AI Engine</div>
-          <span class="badge ${data.ai?.online ? 'badge-green' : 'badge-red'}">${data.ai?.online ? 'ONLINE' : 'OFFLINE'}</span>
+          ${aiBadge(data.ai)}
         </div>
-        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mid)">
-          ${data.ai?.online ? 'Model: ' + esc(data.ai.model || '?') + ' | Available models: ' + (data.ai.models || []).map(esc).join(', ') : 'Ollama not detected. Install from https://ollama.com'}
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mid);line-height:1.8">
+          <strong style="color:var(--text)">${esc(data.ai?.headline || '')}</strong><br>
+          ${esc(data.ai?.detail || '')}
+          ${data.ai?.action ? '<br><span style="color:var(--gold)">' + esc(data.ai.action) + '</span>' : ''}
+          <br>Endpoint: ${esc(data.ai?.endpoint || 'not connected')}
+          <br>Wanted model: ${esc(data.ai?.wanted || '?')}
+          <br>Installed models: ${(data.ai?.models || []).length ? (data.ai.models).map(esc).join(', ') : 'none'}
+          <br>Connectivity test: ${data.ai?.testPassed ? 'passed' : 'not passed'}
+          <br>Ollama binary found: ${data.ai?.installed ? 'yes' : 'no'}
+          <br>Last check: ${data.ai?.lastCheck ? new Date(data.ai.lastCheck).toLocaleTimeString() : 'never'}
+          ${data.ai?.lastError ? '<br>Last error: ' + esc(data.ai.lastError) : ''}
           <br>Cost per query: ${esc(data.ai?.cost || '£0')}
         </div>
+        ${data.ai?.pull?.active ? `<div style="margin-top:8px;font-family:var(--font-mono);font-size:11px;color:var(--gold)">
+          Downloading ${esc(data.ai.pull.model || '')}: ${data.ai.pull.percent || 0}% ${esc(data.ai.pull.status || '')}
+        </div>` : ''}
+        <div style="margin-top:10px">${aiActionButtons(data.ai)}</div>
       </div>
       <div class="card">
         <div class="card-header">
@@ -776,7 +918,6 @@ function renderSettings(el) {
     <div class="card">
       <div class="card-title" style="margin-bottom:10px">Quick Links</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a href="/paddock" class="btn" style="text-decoration:none">Legacy Paddock</a>
         <a href="/nexus-standalone" class="btn" style="text-decoration:none">Legacy NEXUS</a>
         <a href="/bet-tracker" class="btn" style="text-decoration:none">Bet Tracker</a>
       </div>

@@ -6,6 +6,7 @@ const path = require('path');
 const suites = [
   ['Batch launcher lint (startup regression)', 'batch-lint.test.js'],
   ['Startup / health / pages smoke test', 'smoke.test.js'],
+  ['Ollama / local AI integration', 'ai.test.js'],
   ['Launcher lifecycle (start/stop/restart)', 'launcher.test.js']
 ];
 

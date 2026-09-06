@@ -89,18 +89,32 @@ async function main() {
       !!(j && j.racing_configured === false));
   }
 
-  // --- existing pages must still serve --------------------------------------
-  await expectStatus('/paddock.html serves', '/paddock.html', 200);
+  // --- Paddock V2 is the application ----------------------------------------
+  const root = await expectStatus('/ serves Paddock V2', '/', 200);
+  if (root) {
+    record('/ serves the V2 interface (not the old Paddock)',
+      /Paddock Intelligence v2/i.test(root.body) && /id="mainContent"/.test(root.body),
+      root.body.length + ' bytes');
+    record('/ includes the V2 navigation',
+      /data-view="today"/.test(root.body) && /data-view="ai"/.test(root.body));
+    record('/ has no link back to the old Paddock',
+      !/href="\/paddock/.test(root.body));
+  }
+  await expectStatus('/index.html serves V2', '/index.html', 200);
+
+  // The retired original Paddock must redirect to V2, never 404 and never
+  // serve a second competing interface.
+  for (const legacy of ['/paddock', '/paddock.html']) {
+    const r = await get(legacy);
+    record(legacy + ' redirects to Paddock V2',
+      r.status === 302 && r.headers.location === '/', 'HTTP ' + r.status + ' -> ' + r.headers.location);
+  }
+  record('old paddock.html file has been removed from the project',
+    !require('fs').existsSync(path.join(__dirname, '..', 'src', 'paddock.html')));
+
+  // --- other pages must still serve -----------------------------------------
   await expectStatus('/nexus-standalone.html serves', '/nexus-standalone.html', 200);
   await expectStatus('/bet-tracker.html serves', '/bet-tracker.html', 200);
-  await expectStatus('/ serves the v2 dashboard', '/', 200);
-  await expectStatus('/index.html serves', '/index.html', 200);
-  await expectStatus('/paddock (extensionless) serves', '/paddock', 200);
-
-  // Page content sanity - confirms we served the real files, not an error body.
-  const paddock = await get('/paddock.html');
-  record('/paddock.html contains the Paddock markup',
-    /Paddock Intelligence/i.test(paddock.body), paddock.body.length + ' bytes');
   const tracker = await get('/bet-tracker.html');
   record('/bet-tracker.html contains real content', tracker.body.length > 1000,
     tracker.body.length + ' bytes');
@@ -111,7 +125,8 @@ async function main() {
     ['/api/meetings', '/api/meetings'],
     ['/api/status', '/api/status'],
     ['/api/ai-status', '/api/ai-status'],
-    ['/api/search?q=a', '/api/search?q=a']
+    ['/api/search?q=a', '/api/search?q=a'],
+    ['/api/ai/diagnose', '/api/ai/diagnose?autostart=0&test=0']
   ]) {
     const r = await expectStatus(name + ' returns 200 with no data configured', p, 200);
     if (r) {
