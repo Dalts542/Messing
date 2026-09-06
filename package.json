@@ -1,0 +1,18 @@
+{
+  "name": "paddock-intelligence",
+  "version": "2.0.1",
+  "private": true,
+  "description": "Local UK/IRE horse racing dashboard with local AI. Runs entirely on your PC.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/launcher.js",
+    "server": "node src/server.js",
+    "stop": "node src/stop.js",
+    "test": "node tests/run-all.js",
+    "test:smoke": "node tests/smoke.test.js",
+    "test:batch": "node tests/batch-lint.test.js"
+  }
+}

@@ -5,7 +5,31 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-const HOST = '127.0.0.1';
+// Load src/.env relative to THIS file, so the server works no matter what the
+// current working directory is (double-clicked launcher, shortcut, etc).
+function loadEnv() {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return false;
+  let raw;
+  try { raw = fs.readFileSync(envPath, 'utf8'); }
+  catch (e) { console.error('  [config] Could not read .env: ' + e.message); return false; }
+  for (const line of raw.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq < 1) continue;
+    const key = t.slice(0, eq).trim();
+    let val = t.slice(eq + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (!(key in process.env)) process.env[key] = val;
+  }
+  return true;
+}
+loadEnv();
+
+const HOST = process.env.HOST || '127.0.0.1';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const RACING_USER = process.env.RACING_USER || '';
 const RACING_PASS = process.env.RACING_PASS || '';
@@ -22,7 +46,14 @@ const sources = require('./sources');
 const analytics = require('./analytics');
 const ai = require('./ai');
 
-db.initDb();
+try {
+  db.initDb();
+} catch (e) {
+  console.error('\n  ERROR: Could not initialise the local database.');
+  console.error('  ' + e.message);
+  console.error('  Expected location: ' + path.join(__dirname, '..', 'data', 'racing.db') + '\n');
+  throw e;
+}
 
 const ALLOWED_DOMAINS = [
   'api.theracingapi.com', 'www.racingpost.com',
@@ -192,33 +223,109 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-async function startup() {
-  console.log('');
-  console.log('  Paddock Intelligence v2');
-  console.log('  =======================');
-  console.log('');
-  console.log('  Checking local AI...');
-  const aiStatus = await ai.checkOllama();
-  if (aiStatus.online) {
-    console.log('  AI: ONLINE — ' + aiStatus.model + ' (£0 per query)');
-  } else {
-    console.log('  AI: OFFLINE — Install Ollama from https://ollama.com');
-    console.log('       Then run: ollama pull llama3.1:8b');
-  }
-  console.log('');
-  console.log('  Racing API: ' + (RACING_USER ? 'configured' : 'NOT configured — set RACING_USER/RACING_PASS in .env'));
-  console.log('');
-  sources.startBackgroundRefresh(300000);
-  setInterval(() => ai.checkOllama(), 30000);
-  server.listen(PORT, HOST, () => {
-    console.log('  Dashboard: http://' + HOST + ':' + PORT + '/');
-    console.log('  Bet Tracker: http://' + HOST + ':' + PORT + '/bet-tracker');
-    console.log('  Legacy Paddock: http://' + HOST + ':' + PORT + '/paddock');
-    console.log('  Legacy NEXUS: http://' + HOST + ':' + PORT + '/nexus-standalone');
-    console.log('');
-    console.log('  Press Ctrl+C to stop.');
-    console.log('');
+let refreshTimer = null;
+let aiPollTimer = null;
+
+// Binds the HTTP server. Resolves once it is actually listening.
+// Rejects with err.code === 'EADDRINUSE' if the port is already taken, so the
+// launcher can report a port conflict instead of crashing with a stack trace.
+function listen(port = PORT, host = HOST) {
+  return new Promise((resolve, reject) => {
+    function onError(err) { server.removeListener('listening', onListening); reject(err); }
+    function onListening() { server.removeListener('error', onError); resolve(server.address()); }
+    server.once('error', onError);
+    server.once('listening', onListening);
+    server.listen(port, host);
   });
 }
 
-startup();
+// Optional subsystems. Neither Ollama nor the racing data provider may prevent
+// the core website from starting — both degrade to a status message.
+async function startOptionalSubsystems() {
+  let aiStatus = { online: false, model: null };
+  try {
+    aiStatus = await ai.checkOllama();
+  } catch (e) {
+    console.log('  [ai] Ollama check failed (non-fatal): ' + e.message);
+  }
+  if (aiStatus.online) {
+    console.log('  AI: ONLINE - ' + aiStatus.model + ' (free, runs locally)');
+  } else {
+    console.log('  AI: OFFLINE - the dashboard still works. To enable AI:');
+    console.log('       install Ollama from https://ollama.com, then: ollama pull llama3.1:8b');
+  }
+
+  if (RACING_USER && RACING_PASS) {
+    console.log('  Racing API: configured');
+  } else {
+    console.log('  Racing API: NOT configured - dashboard runs with no race data.');
+    console.log('       Add RACING_USER / RACING_PASS to src\\.env, then see Data Status.');
+  }
+
+  // Background work is fire-and-forget; failures are recorded in source_log and
+  // surfaced on the Data Status page rather than thrown.
+  try {
+    sources.startBackgroundRefresh(300000);
+    refreshTimer = true;
+  } catch (e) {
+    console.log('  [sources] Background refresh could not start (non-fatal): ' + e.message);
+  }
+  try {
+    aiPollTimer = setInterval(() => { ai.checkOllama().catch(() => {}); }, 30000);
+    if (aiPollTimer.unref) aiPollTimer.unref();
+  } catch { /* non-fatal */ }
+}
+
+async function startup({ quiet = false } = {}) {
+  if (!quiet) {
+    console.log('');
+    console.log('  Paddock Intelligence v2');
+    console.log('  =======================');
+    console.log('');
+  }
+
+  // Bind FIRST. The site must come up even if AI and data sources are absent.
+  const addr = await listen();
+
+  if (!quiet) {
+    console.log('  Dashboard:      http://' + HOST + ':' + PORT + '/');
+    console.log('  Paddock:        http://' + HOST + ':' + PORT + '/paddock.html');
+    console.log('  NEXUS:          http://' + HOST + ':' + PORT + '/nexus-standalone.html');
+    console.log('  Bet Tracker:    http://' + HOST + ':' + PORT + '/bet-tracker.html');
+    console.log('  Health:         http://' + HOST + ':' + PORT + '/health');
+    console.log('');
+  }
+
+  await startOptionalSubsystems();
+
+  if (!quiet) {
+    console.log('');
+    console.log('  Server is ready. Press Ctrl+C to stop (or run stop.bat).');
+    console.log('');
+  }
+  return addr;
+}
+
+async function shutdown() {
+  if (aiPollTimer) { clearInterval(aiPollTimer); aiPollTimer = null; }
+  if (refreshTimer) { try { sources.stopBackgroundRefresh(); } catch { /* ignore */ } refreshTimer = null; }
+  await new Promise(resolve => server.close(resolve));
+}
+
+module.exports = { server, startup, shutdown, listen, HOST, PORT };
+
+// Only auto-start when run directly (node src/server.js). When the launcher
+// requires this module it drives startup() itself so it can report failures.
+if (require.main === module) {
+  startup().catch(err => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.error('\n  ERROR: Port ' + PORT + ' is already in use.');
+      console.error('  Another program (possibly another copy of this app) is using it.');
+      console.error('  Run stop.bat, or set PORT=3001 in src\\.env.\n');
+    } else {
+      console.error('\n  ERROR: Server failed to start.');
+      console.error('  ' + (err && err.stack ? err.stack : err) + '\n');
+    }
+    process.exit(1);
+  });
+}
